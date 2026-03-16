@@ -87,7 +87,7 @@ export function LobbyScreen({
                 disabled={knocking}
                 className="rounded-md bg-yellow-600 px-4 py-2 text-sm font-medium text-white hover:bg-yellow-700 disabled:opacity-50"
               >
-                {knocking ? "Knock sent ✓" : "🔔 Let me in"}
+                {knocking ? "Knock sent OK" : " Let me in"}
               </button>
               <button
                 onClick={onLeave}

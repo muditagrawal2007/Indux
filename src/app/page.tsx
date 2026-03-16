@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CommandPalette } from "./components/CommandPalette";
+import { Icon } from "./components/Icons";
 
 export default function InduxLauncher() {
   const router = useRouter();
@@ -74,7 +75,7 @@ export default function InduxLauncher() {
               className="hidden items-center gap-2 rounded-md border border-[color:var(--border)] bg-[color:var(--bg)] px-2.5 py-1.5 text-xs text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-elevated)] md:flex"
             >
               <span>Quick actions</span>
-              <kbd>⌘K</kbd>
+              <kbd><Icon.Command size={12} /></kbd>
             </button>
             <Link href="/schedule" className="rounded-md px-3 py-1.5 text-sm text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-elevated)]">
               Schedule
@@ -87,8 +88,8 @@ export default function InduxLauncher() {
               aria-label="Toggle theme"
               className="ml-1 rounded-md border border-[color:var(--border)] bg-[color:var(--bg)] p-1.5 hover:bg-[color:var(--bg-elevated)]"
             >
-              <span className="block dark:hidden">🌙</span>
-              <span className="hidden dark:block">☀</span>
+              <span className="block dark:hidden"><Icon.Moon size={16} /></span>
+              <span className="hidden dark:block">Light</span>
             </button>
           </nav>
           {/* Mobile theme toggle */}
@@ -97,8 +98,8 @@ export default function InduxLauncher() {
             aria-label="Toggle theme"
             className="rounded-md border border-[color:var(--border)] bg-[color:var(--bg)] p-1.5 hover:bg-[color:var(--bg-elevated)] md:hidden"
           >
-            <span className="block dark:hidden">🌙</span>
-            <span className="hidden dark:block">☀</span>
+            <span className="block dark:hidden"><Icon.Moon size={16} /></span>
+            <span className="hidden dark:block">Light</span>
           </button>
         </div>
       </header>

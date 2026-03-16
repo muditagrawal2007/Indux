@@ -51,7 +51,7 @@ export function NotesPanel({ roomId, identity, userName, onClose }: { roomId: st
         <h3 className="text-sm font-medium">Shared notes</h3>
         <div className="flex items-center gap-2 text-[11px] text-gray-500">
           {updatedBy && <span>Last edit by {updatedBy}</span>}
-          <button onClick={onClose} className="rounded p-1 text-gray-400 hover:bg-gray-800 hover:text-white">✕</button>
+          <button onClick={onClose} className="rounded p-1 text-gray-400 hover:bg-gray-800 hover:text-white"></button>
         </div>
       </div>
       <textarea

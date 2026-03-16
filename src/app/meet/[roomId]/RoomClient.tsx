@@ -26,6 +26,7 @@ import { NetworkStats } from "./NetworkStats";
 import { QualityControl } from "./QualityControl";
 import { ViewToggle } from "./ViewToggle";
 import { ShortcutsHelp } from "./Shortcuts";
+import { Icon } from "../../components/Icons";
 
 type Tab = "chat" | "people" | "qa" | "notes" | null;
 
@@ -115,7 +116,7 @@ export function RoomClient({ roomId, identity, isAdmin: initialIsAdmin, isEmbed,
           <div className="h-2 w-32 overflow-hidden rounded-full bg-gray-800">
             <div className="h-full w-1/2 animate-pulse rounded-full" style={{ background: "var(--accent)" }} />
           </div>
-          <p className="text-sm">Connecting to <code className="font-mono">/{roomId}</code>…</p>
+          <p className="text-sm">Connecting to <code className="font-mono">/{roomId}</code>...</p>
         </div>
       </div>
     );

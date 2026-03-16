@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Icon } from "../../components/Icons";
 
 type Settings = {
   waitingRoom: boolean;
@@ -47,7 +48,7 @@ const LABELS: Record<keyof Settings, { label: string; desc: string; type?: "pass
   muteOnJoin: { label: "Mute on join", desc: "Participants join with mic muted" },
   allowScreenShare: { label: "Screen share", desc: "Let participants share their screen" },
   allowChat: { label: "In-room chat", desc: "Text chat during the meeting" },
-  allowReactions: { label: "Reactions", desc: "👍 👏 ❤️ 😂 emoji reactions" },
+  allowReactions: { label: "Reactions", desc: "Thumbs Clap  Laugh emoji reactions" },
   allowHandRaise: { label: "Raise hand", desc: "Participants can raise hand" },
   allowPolls: { label: "Polls", desc: "Live polls for audience input" },
   allowWhiteboard: { label: "Whiteboard", desc: "Collaborative drawing canvas" },
@@ -87,8 +88,8 @@ export function SettingsPanel({ roomId, onClose }: { roomId: string; onClose: ()
       <div className="flex items-center justify-between border-b border-gray-800 px-4 py-3">
         <h2 className="text-sm font-semibold">Meeting settings</h2>
         <div className="flex items-center gap-2">
-          {saved && <span className="text-[11px] text-green-400">Saved ✓</span>}
-          <button onClick={onClose} className="rounded p-1 text-gray-400 hover:bg-gray-800 hover:text-white">✕</button>
+          {saved && <span className="text-[11px] text-green-400">Saved OK</span>}
+          <button onClick={onClose} className="rounded p-1 text-gray-400 hover:bg-gray-800 hover:text-white"><Icon.Close size={16} /></button>
         </div>
       </div>
       <div className="flex-1 overflow-y-auto p-4">

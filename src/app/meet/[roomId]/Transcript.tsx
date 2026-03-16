@@ -112,7 +112,7 @@ export function TranscriptPanel({
           >
             {enabled ? "Stop" : error ? "Unavailable" : "Start transcribing"}
           </button>
-          <button onClick={onClose} className="rounded p-1 text-gray-400 hover:bg-gray-800 hover:text-white">✕</button>
+          <button onClick={onClose} className="rounded p-1 text-gray-400 hover:bg-gray-800 hover:text-white"></button>
         </div>
       </div>
       {error && (
@@ -123,7 +123,7 @@ export function TranscriptPanel({
       <div className="flex-1 space-y-2 overflow-y-auto p-3 text-sm">
         {lines.length === 0 && (
           <p className="text-center text-xs text-gray-500">
-            {enabled ? "Speak to see live captions…" : "Click Start transcribing to enable captions for the whole room."}
+            {enabled ? "Speak to see live captions..." : "Click Start transcribing to enable captions for the whole room."}
           </p>
         )}
         {lines.map((l) => (

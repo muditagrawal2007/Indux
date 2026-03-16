@@ -80,7 +80,7 @@ export function QAPanel({ roomId, identity, userName, isAdmin, onClose }: { room
     <div className="absolute bottom-12 right-4 z-40 flex h-[28rem] w-[28rem] max-w-[90vw] flex-col rounded-lg border border-gray-800 bg-gray-950 shadow-2xl">
       <div className="flex items-center justify-between border-b border-gray-800 px-3 py-2">
         <h3 className="text-sm font-medium">Q&A</h3>
-        <button onClick={onClose} className="rounded p-1 text-gray-400 hover:bg-gray-800 hover:text-white">✕</button>
+        <button onClick={onClose} className="rounded p-1 text-gray-400 hover:bg-gray-800 hover:text-white"></button>
       </div>
       <div className="flex-1 space-y-2 overflow-y-auto p-3 text-sm">
         {sorted.length === 0 && (
@@ -107,7 +107,7 @@ export function QAPanel({ roomId, identity, userName, isAdmin, onClose }: { room
                 className="flex h-7 w-7 shrink-0 flex-col items-center justify-center rounded border border-gray-700 hover:bg-gray-800"
                 title="Upvote"
               >
-                <span className="text-[10px]">▲</span>
+                <span className="text-[10px]">+</span>
                 <span className="text-[10px] font-medium">{q.upvotes}</span>
               </button>
             </div>
@@ -121,7 +121,7 @@ export function QAPanel({ roomId, identity, userName, isAdmin, onClose }: { room
                 <input
                   value={answerDraft[q.id] || ""}
                   onChange={(e) => setAnswerDraft((s) => ({ ...s, [q.id]: e.target.value }))}
-                  placeholder="Answer…"
+                  placeholder="Answer..."
                   className="flex-1 rounded border border-gray-700 bg-gray-950 px-2 py-1 text-xs placeholder-gray-600"
                 />
                 <button onClick={() => answer(q.id)} className="rounded bg-gray-800 px-2 py-1 text-[11px] hover:bg-gray-700">Send</button>
@@ -135,7 +135,7 @@ export function QAPanel({ roomId, identity, userName, isAdmin, onClose }: { room
           value={question}
           onChange={(e) => setQuestion(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); ask(); } }}
-          placeholder="Ask a question…"
+          placeholder="Ask a question..."
           className="flex-1 rounded border border-gray-700 bg-gray-900 px-2 py-1 text-sm placeholder-gray-500 focus:border-gray-500 focus:outline-none"
         />
         <button onClick={ask} className="rounded bg-gray-800 px-3 py-1 text-xs hover:bg-gray-700">Ask</button>

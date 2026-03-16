@@ -1,10 +1,11 @@
 "use client";
 
-// Floating emoji reactions and Share modal — small components
+// Floating reactions and Share modal — uses standard SVG icons (no emoji)
 
 import { useEffect, useState } from "react";
+import { Icon } from "../../components/Icons";
 
-// Floating reactions
+// Floating reactions — text labels (no emoji)
 export function FloatingReactions({ roomId }: { roomId: string }) {
   const [reactions, setReactions] = useState<any[]>([]);
   useEffect(() => {
@@ -24,18 +25,26 @@ export function FloatingReactions({ roomId }: { roomId: string }) {
     return () => clearInterval(t);
   }, [roomId]);
 
+  // Render reactions as text labels (no emoji)
+  const labelMap: Record<string, string> = {
+    thumbs: "Thumbs up",
+    clap: "Clap",
+    heart: "Love",
+    laugh: "Laugh",
+  };
+
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
       {reactions.map((r, i) => (
         <div
           key={i}
-          className="absolute bottom-20 text-3xl"
+          className="absolute bottom-20 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white shadow-lg backdrop-blur"
           style={{
             left: `${10 + (i * 7) % 80}%`,
             animation: `float-up 3s ease-out forwards`,
           }}
         >
-          {r.emoji}
+          {labelMap[r.emoji] || r.emoji}
         </div>
       ))}
       <style jsx>{`
@@ -49,7 +58,7 @@ export function FloatingReactions({ roomId }: { roomId: string }) {
   );
 }
 
-// Share modal
+// Share modal — uses standard SVG icons
 export function ShareModal({ roomId, onClose }: { roomId: string; onClose: () => void }) {
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
   const link = typeof window !== "undefined" ? `${window.location.origin}/meet/${roomId}` : "";
@@ -68,7 +77,9 @@ export function ShareModal({ roomId, onClose }: { roomId: string; onClose: () =>
             <h2 className="text-lg font-semibold text-white">Share meeting</h2>
             <p className="mt-1 text-xs text-white/50">Anyone with the code or link can join</p>
           </div>
-          <button onClick={onClose} className="rounded p-1 text-white/50 hover:bg-white/5 hover:text-white">✕</button>
+          <button onClick={onClose} className="rounded p-1 text-white/50 hover:bg-white/5 hover:text-white" aria-label="Close">
+            <Icon.Close size={16} />
+          </button>
         </div>
         <div className="mt-5 space-y-3">
           <div>
@@ -77,8 +88,9 @@ export function ShareModal({ roomId, onClose }: { roomId: string; onClose: () =>
               <code className="font-mono text-sm font-semibold tracking-wider">{roomId}</code>
               <button
                 onClick={() => copy(roomId, "code")}
-                className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] hover:bg-white/10"
+                className="flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] hover:bg-white/10"
               >
+                <Icon.Copy size={12} />
                 {copied === "code" ? "Copied" : "Copy"}
               </button>
             </div>
@@ -89,14 +101,19 @@ export function ShareModal({ roomId, onClose }: { roomId: string; onClose: () =>
               <span className="truncate font-mono text-xs text-white/80">{link}</span>
               <button
                 onClick={() => copy(link, "link")}
-                className="rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] hover:bg-white/10"
+                className="flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2.5 py-1 text-[11px] hover:bg-white/10"
               >
+                <Icon.Copy size={12} />
                 {copied === "link" ? "Copied" : "Copy"}
               </button>
             </div>
           </div>
           <div className="rounded-lg border border-white/10 bg-white/5 p-3 text-xs text-white/50">
-            <span className="font-medium text-white/70">Tip:</span> Lock the room from Manage → Lock room to require admin approval.
+            <div className="flex items-center gap-1.5 font-medium text-white/70">
+              <Icon.Info size={12} />
+              Tip
+            </div>
+            <p className="mt-1">Lock the room from Manage to require admin approval.</p>
           </div>
         </div>
       </div>

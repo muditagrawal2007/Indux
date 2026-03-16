@@ -4,6 +4,7 @@
 // Extracted from RoomClient to keep that file small
 
 import { useEffect, useState } from "react";
+import { Icon } from "../../components/Icons";
 
 type Tab = "main" | "breakouts";
 
@@ -47,7 +48,7 @@ export function AdminPanel({
     <div className="absolute right-0 top-0 z-40 flex h-full w-full max-w-md animate-slideInR flex-col border-l border-white/10 bg-[#0a0a0f] shadow-2xl">
       <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
         <h2 className="text-sm font-semibold">Manage meeting</h2>
-        <button onClick={onClose} className="rounded p-1 text-white/50 hover:bg-white/10 hover:text-white">✕</button>
+        <button onClick={onClose} className="rounded p-1 text-white/50 hover:bg-white/10 hover:text-white"><Icon.Close size={14} /></button>
       </div>
 
       <div className="flex gap-1 border-b border-white/10 px-3 pt-2">

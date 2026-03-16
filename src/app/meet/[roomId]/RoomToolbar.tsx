@@ -1,9 +1,10 @@
 "use client";
 
 // Bottom toolbar — mic, cam, share, leave, etc.
-// Extracted from RoomClient to keep that file small
+// Uses SVG icons (Heroicons-style) instead of emoji
 
 import { useRef, useState } from "react";
+import { Icon } from "../../components/Icons";
 
 type Tab = "chat" | "people" | "qa" | "notes" | null;
 
@@ -37,12 +38,12 @@ export function RoomToolbar({
         </div>
 
         <div className="flex items-center gap-1">
-          <TBtn onClick={() => {}} label="Mic" icon="🎙" />
-          <TBtn onClick={() => {}} label="Camera" icon="📹" />
-          <TBtn onClick={onShare} label="Share" icon="🖥" primary />
-          <TBtn onClick={() => onTab(activeTab === "chat" ? null : "chat")} label="Chat" icon="💬" active={activeTab === "chat"} />
-          <TBtn onClick={() => onTab(activeTab === "people" ? null : "people")} label="People" icon="👥" active={activeTab === "people"} />
-          <TBtn onClick={() => alert("Use the right side panel for polls")} label="Polls" icon="📊" />
+          <TBtn onClick={() => {}} label="Microphone" icon={<Icon.Mic />} />
+          <TBtn onClick={() => {}} label="Camera" icon={<Icon.Video />} />
+          <TBtn onClick={onShare} label="Share screen" icon={<Icon.ScreenShare />} primary />
+          <TBtn onClick={() => onTab(activeTab === "chat" ? null : "chat")} label="Chat" icon={<Icon.MessageSquare />} active={activeTab === "chat"} />
+          <TBtn onClick={() => onTab(activeTab === "people" ? null : "people")} label="People" icon={<Icon.Users />} active={activeTab === "people"} />
+          <TBtn onClick={() => alert("Use the right side panel for polls")} label="Polls" icon={<Icon.BarChart />} />
           <TBtn
             onClick={async () => {
               await fetch(`/api/rooms/${roomId}/hand`, {
@@ -52,12 +53,12 @@ export function RoomToolbar({
               });
             }}
             label="Raise hand"
-            icon="✋"
+            icon={<Icon.Hand />}
           />
-          <TBtn onClick={onWhiteboard} label="Whiteboard" icon="🪟" />
-          <TBtn onClick={onNotes} label="Notes" icon="📝" />
-          <TBtn onClick={() => onTab(activeTab === "qa" ? null : "qa")} label="Q&A" icon="❓" active={activeTab === "qa"} />
-          <TBtn onClick={onTranscript} label="Transcript" icon="📜" />
+          <TBtn onClick={onWhiteboard} label="Whiteboard" icon={<Icon.Pencil />} />
+          <TBtn onClick={onNotes} label="Notes" icon={<Icon.FileText />} />
+          <TBtn onClick={() => onTab(activeTab === "qa" ? null : "qa")} label="Questions" icon={<Icon.Help />} active={activeTab === "qa"} />
+          <TBtn onClick={onTranscript} label="Transcript" icon={<Icon.FileText />} />
           {isAdmin && (
             <RecBtn
               roomId={roomId}
@@ -70,22 +71,24 @@ export function RoomToolbar({
 
         <button
           onClick={onLeave}
-          className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+          className="flex items-center gap-2 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
         >
-          Leave
+          <Icon.PhoneOff size={16} />
+          <span>Leave</span>
         </button>
       </div>
     </footer>
   );
 }
 
-function TBtn({ onClick, label, icon, active, primary }: { onClick: () => void; label: string; icon: string; active?: boolean; primary?: boolean }) {
+function TBtn({ onClick, label, icon, active, primary }: { onClick: () => void; label: string; icon: React.ReactNode; active?: boolean; primary?: boolean }) {
   return (
     <button
       onClick={onClick}
       title={label}
+      aria-label={label}
       className={
-        "flex h-9 w-9 items-center justify-center rounded-md text-base transition-all " +
+        "flex h-9 w-9 items-center justify-center rounded-md transition-all " +
         (primary
           ? "bg-white text-black hover:bg-white/90"
           : active
@@ -150,14 +153,15 @@ function RecBtn({ roomId, userName, recording, setRecording }: { roomId: string;
     <button
       onClick={recording ? stop : start}
       title={recording ? "Stop recording" : "Start recording"}
+      aria-label={recording ? "Stop recording" : "Start recording"}
       className={
-        "flex h-9 w-9 items-center justify-center rounded-md text-base transition-all " +
+        "flex h-9 w-9 items-center justify-center rounded-md transition-all " +
         (recording
           ? "bg-red-600 text-white hover:bg-red-700 animate-pulse"
           : "text-white/70 hover:bg-white/10 hover:text-white")
       }
     >
-      {recording ? "⏹" : "⏺"}
+      {recording ? <Icon.Stop size={14} /> : <Icon.Record size={14} />}
     </button>
   );
 }

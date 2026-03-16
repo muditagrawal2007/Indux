@@ -16,9 +16,9 @@ export function WhiteboardPanel({ roomId, onClose }: { roomId: string; onClose: 
       <div className="absolute right-4 top-12 z-40 flex h-[28rem] w-[40rem] max-w-[90vw] flex-col rounded-lg border border-gray-800 bg-gray-950 shadow-2xl">
         <div className="flex items-center justify-between border-b border-gray-800 px-3 py-2">
           <h3 className="text-sm font-medium">Whiteboard</h3>
-          <button onClick={onClose} className="rounded p-1 text-gray-400 hover:bg-gray-800 hover:text-white">✕</button>
+          <button onClick={onClose} className="rounded p-1 text-gray-400 hover:bg-gray-800 hover:text-white"></button>
         </div>
-        <div className="flex-1 grid place-items-center text-sm text-gray-400">Loading…</div>
+        <div className="flex-1 grid place-items-center text-sm text-gray-400">Loading...</div>
       </div>
     );
   }

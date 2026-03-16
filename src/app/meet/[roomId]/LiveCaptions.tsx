@@ -101,7 +101,7 @@ export function LiveCaptions() {
           className="rounded-md border border-gray-700 bg-gray-800 px-2 py-1 text-[11px] text-gray-400 hover:bg-gray-700"
           title="Clear captions"
         >
-          ✕
+          
         </button>
       )}
       {enabled && (text || interim) && (

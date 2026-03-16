@@ -4,6 +4,7 @@
 // Lightweight, no heavy deps
 
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "../../components/Icons";
 
 type Tab = "chat" | "people" | "qa" | "notes";
 
@@ -30,12 +31,12 @@ export function SidePanel({
               (tab === t ? "bg-white/10 text-white" : "text-white/50 hover:text-white")
             }
           >
-            <span className="mr-1">{t === "chat" ? "💬" : t === "people" ? "👥" : t === "qa" ? "❓" : "📝"}</span>
+            <span className="mr-1 inline-flex">{t === "chat" ? <Icon.MessageSquare size={14} /> : t === "people" ? <Icon.Users size={14} /> : t === "qa" ? <Icon.Help size={14} /> : <Icon.FileText size={14} />}</span>
             <span className="capitalize">{t}</span>
           </button>
         ))}
         <div className="flex-1" />
-        <button onClick={onClose} className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-white">✕</button>
+        <button onClick={onClose} className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-white"></button>
       </div>
       <div className="flex-1 overflow-hidden">
         {tab === "chat" && <ChatTab roomId={roomId} identity={identity} userName={userName} />}
@@ -89,7 +90,7 @@ function ChatTab({ roomId, identity, userName }: { roomId: string; identity: str
   return (
     <div className="flex h-full flex-col">
       <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto p-3 text-sm">
-        {msgs.length === 0 && <p className="py-12 text-center text-xs text-white/40">No messages yet. Say hi 👋</p>}
+        <p className="py-12 text-center text-xs text-white/40">No messages yet. Say hi.</p>
         {msgs.map((m) => (
           <div key={m.id} className="break-words">
             <div className="flex items-baseline gap-2">
@@ -109,7 +110,7 @@ function ChatTab({ roomId, identity, userName }: { roomId: string; identity: str
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Message…"
+          placeholder="Message..."
           className="flex-1 rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none"
         />
         <button type="submit" className="rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/20">
@@ -236,7 +237,7 @@ function QATab({ roomId, identity, userName, isAdmin }: { roomId: string; identi
                 className="flex h-7 w-6 shrink-0 flex-col items-center justify-center rounded border border-white/10 hover:bg-white/10"
                 title="Upvote"
               >
-                <span className="text-[10px]">▲</span>
+                <span className="text-[10px]">+</span>
                 <span className="text-[10px]">{q.upvotes}</span>
               </button>
               <div className="min-w-0 flex-1">
@@ -257,7 +258,7 @@ function QATab({ roomId, identity, userName, isAdmin }: { roomId: string; identi
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && ask()}
-          placeholder="Ask a question…"
+          placeholder="Ask a question..."
           className="flex-1 rounded-md border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm placeholder:text-white/40 focus:border-white/30 focus:outline-none"
         />
         <button onClick={ask} className="rounded-md bg-white/10 px-3 py-1.5 text-xs hover:bg-white/20">Ask</button>

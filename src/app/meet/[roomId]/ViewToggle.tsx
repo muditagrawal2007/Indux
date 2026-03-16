@@ -23,7 +23,7 @@ export function ViewToggle({
           (view === "tile" ? "bg-gray-700 text-white" : "border border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700")
         }
       >
-        ▦ Tiles
+        Tiles Tiles
       </button>
       <button
         onClick={() => onViewChange("stage")}
@@ -33,7 +33,7 @@ export function ViewToggle({
           (view === "stage" ? "bg-gray-700 text-white" : "border border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700")
         }
       >
-        ◧ Stage
+        Stage Stage
       </button>
       {pinned && (
         <button
@@ -41,7 +41,7 @@ export function ViewToggle({
           className="rounded-md border border-yellow-700 bg-yellow-900/40 px-2 py-1 text-xs text-yellow-300"
           title={`Pinned to ${pinned}`}
         >
-          📌 Unpin
+           Unpin
         </button>
       )}
     </div>

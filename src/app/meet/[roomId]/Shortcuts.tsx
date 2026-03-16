@@ -24,7 +24,7 @@ export function ShortcutsHelp({ isOpen, onClose }: { isOpen: boolean; onClose: (
             <h2 className="text-lg font-semibold text-white">Keyboard shortcuts</h2>
             <p className="mt-1 text-xs text-white/50">Press <kbd>?</kbd> anytime to bring this up</p>
           </div>
-          <button onClick={onClose} className="rounded p-1 text-white/50 hover:bg-white/5 hover:text-white">✕</button>
+          <button onClick={onClose} className="rounded p-1 text-white/50 hover:bg-white/5 hover:text-white"></button>
         </div>
         <div className="mt-5 grid grid-cols-2 gap-3 text-sm">
           <Shortcut k="M" label="Mute / unmute" />
@@ -40,7 +40,7 @@ export function ShortcutsHelp({ isOpen, onClose }: { isOpen: boolean; onClose: (
           <Shortcut k="W" label="Whiteboard" />
           <Shortcut k="N" label="Notes" />
           <Shortcut k="Esc" label="Close dialog / leave" />
-          <Shortcut k="⌘K" label="Command palette" />
+          <Shortcut k="Ctrl+K" label="Command palette" />
         </div>
       </div>
     </div>

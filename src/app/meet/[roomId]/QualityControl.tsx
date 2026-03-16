@@ -18,7 +18,7 @@ export function QualityControl() {
     const track = localParticipant.getTrackPublication()?.videoTrack;
     if (!track) return;
 
-    // Map connection state → quality
+    // Map connection state -> quality
     const effective: Exclude<Quality, "auto"> =
       quality === "auto"
         ? (connState === LKState.Connected

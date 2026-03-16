@@ -59,10 +59,10 @@ export function NetworkStats() {
 
   // Use connection state as a proxy for quality
   const qualityIcon =
-    connState === LKState.Connected ? "●●●●"
-    : connState === LKState.Connecting ? "●●●○"
-    : connState === LKState.Reconnecting ? "●●○○"
-    : "●○○○";
+    connState === LKState.Connected ? "Excellent"
+    : connState === LKState.Connecting ? "Good"
+    : connState === LKState.Reconnecting ? "Fair"
+    : "Poor";
 
   const qualityColor =
     connState === LKState.Connected ? "text-green-400"
