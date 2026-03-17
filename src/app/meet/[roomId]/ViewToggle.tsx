@@ -1,49 +1,38 @@
 "use client";
 
+import { Icon } from "../../components/Icons";
+
 // Tile view vs stage view toggle
-// Also handles "pin" (sticky speaker focus on any participant)
 export function ViewToggle({
-  view,
-  onViewChange,
-  pinned,
-  onPinChange,
+  view, onViewChange,
 }: {
   view: "tile" | "stage";
   onViewChange: (v: "tile" | "stage") => void;
-  pinned: string | null;
-  onPinChange: (id: string | null) => void;
 }) {
   return (
-    <div className="flex items-center gap-1">
+    <div className="flex items-center gap-1 rounded-md border border-white/10 bg-white/5 p-0.5">
       <button
         onClick={() => onViewChange("tile")}
         title="Tile view"
         className={
-          "rounded-md px-2 py-1 text-xs " +
-          (view === "tile" ? "bg-gray-700 text-white" : "border border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700")
+          "flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors " +
+          (view === "tile" ? "bg-white/10 text-white" : "text-white/50 hover:text-white")
         }
       >
-        Tiles Tiles
+        <Icon.Grid size={12} />
+        <span>Tiles</span>
       </button>
       <button
         onClick={() => onViewChange("stage")}
         title="Stage view"
         className={
-          "rounded-md px-2 py-1 text-xs " +
-          (view === "stage" ? "bg-gray-700 text-white" : "border border-gray-700 bg-gray-800 text-gray-300 hover:bg-gray-700")
+          "flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors " +
+          (view === "stage" ? "bg-white/10 text-white" : "text-white/50 hover:text-white")
         }
       >
-        Stage Stage
+        <Icon.Maximize size={12} />
+        <span>Stage</span>
       </button>
-      {pinned && (
-        <button
-          onClick={() => onPinChange(null)}
-          className="rounded-md border border-yellow-700 bg-yellow-900/40 px-2 py-1 text-xs text-yellow-300"
-          title={`Pinned to ${pinned}`}
-        >
-           Unpin
-        </button>
-      )}
     </div>
   );
 }

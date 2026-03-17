@@ -1,20 +1,18 @@
 "use client";
 
-// Main meeting room client
-// Designed to be FAST:
-//  - Lazy-loads heavy panels (whiteboard, settings, transcript)
-//  - Uses extracted side panels and toolbar
-//  - Minimal re-renders
+// Main meeting room client — clean custom UI (no LiveKit defaults)
+// Uses LiveKit only for the WebRTC connection, renders everything ourselves
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   LiveKitRoom,
-  VideoConference,
   RoomAudioRenderer,
-  PreJoin,
   useLocalParticipant,
+  useRemoteParticipants,
+  useTracks,
 } from "@livekit/components-react";
+import { Track } from "livekit-client";
 import dynamic from "next/dynamic";
 import "@livekit/components-styles";
 import { MeetingHeader } from "./MeetingHeader";
@@ -27,10 +25,11 @@ import { QualityControl } from "./QualityControl";
 import { ViewToggle } from "./ViewToggle";
 import { ShortcutsHelp } from "./Shortcuts";
 import { Icon } from "../../components/Icons";
+import { CustomPreJoin } from "./CustomPreJoin";
+import { CustomVideoGrid } from "./CustomVideoGrid";
 
 type Tab = "chat" | "people" | "qa" | "notes" | null;
 
-// Lazy-load heavy panels — only fetch when opened
 const AdminPanel = dynamic(() => import("./AdminPanel").then((m) => m.AdminPanel), { ssr: false });
 const SettingsPanel = dynamic(() => import("./Settings").then((m) => m.SettingsPanel), { ssr: false });
 const WhiteboardPanel = dynamic(() => import("./Whiteboard").then((m) => m.WhiteboardPanel), { ssr: false });
@@ -45,16 +44,6 @@ export function RoomClient({ roomId, identity, isAdmin: initialIsAdmin, isEmbed,
   const [error, setError] = useState<string | null>(null);
   const [userName, setUserName] = useState(externalName || identity);
   const [joined, setJoined] = useState(false);
-  const [accent, setAccent] = useState("indigo");
-  const router = useRouter();
-
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      const a = localStorage.getItem("indux_accent") || "indigo";
-      setAccent(a);
-      document.documentElement.dataset.accent = a;
-    }
-  }, []);
 
   async function fetchToken(who: string, admin: boolean) {
     setError(null);
@@ -78,30 +67,35 @@ export function RoomClient({ roomId, identity, isAdmin: initialIsAdmin, isEmbed,
 
   if (!joined) {
     return (
-      <PreJoin
-        defaults={{ username: externalName || userName, videoEnabled: true, audioEnabled: true }}
-        onSubmit={(values) => {
-          const name = values.username?.trim() || identity;
+      <CustomPreJoin
+        roomId={roomId}
+        isAdmin={initialIsAdmin}
+        initialName={userName}
+        isEmbed={!!isEmbed}
+        onJoin={(name) => {
           setUserName(name);
           setJoined(true);
           fetchToken(name, initialIsAdmin);
         }}
-        onError={(err) => setError(err.message)}
-        joinLabel="Join meeting"
-        micLabel="Microphone"
-        camLabel="Camera"
-        userLabel="Your name"
+        onLeave={() => window.history.back()}
       />
     );
   }
 
   if (error) {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-gray-50 p-6 text-center text-gray-900 dark:bg-gray-950 dark:text-white">
-        <div className="rounded-2xl border border-gray-200 bg-white/80 p-8 shadow-xl backdrop-blur dark:border-gray-800 dark:bg-gray-900/80">
-          <p className="text-sm text-red-600 dark:text-red-400">Connection error</p>
-          <p className="mt-2 text-xs text-gray-500 dark:text-gray-400">{error}</p>
-          <button onClick={() => { setError(null); setJoined(false); }} className="mt-6 rounded-md bg-gray-900 px-4 py-2 text-sm text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900">
+      <div className="flex min-h-screen w-full items-center justify-center bg-[#0a0a0f] text-white">
+        <div className="rounded-2xl border border-white/10 bg-[#15151b] p-8 text-center shadow-2xl">
+          <div className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-full bg-red-500/15 text-red-300">
+            <Icon.Alert size={20} />
+          </div>
+          <h2 className="text-lg font-semibold">Connection error</h2>
+          <p className="mt-2 max-w-sm text-sm text-white/60">{error}</p>
+          <button
+            onClick={() => { setError(null); setJoined(false); }}
+            className="mt-6 rounded-lg px-4 py-2 text-sm font-medium text-white"
+            style={{ background: "var(--accent)" }}
+          >
             Try again
           </button>
         </div>
@@ -111,12 +105,12 @@ export function RoomClient({ roomId, identity, isAdmin: initialIsAdmin, isEmbed,
 
   if (!token || !serverUrl) {
     return (
-      <div className="flex h-full w-full items-center justify-center bg-gray-950 text-gray-400">
+      <div className="flex min-h-screen w-full items-center justify-center bg-[#0a0a0f] text-white">
         <div className="flex flex-col items-center gap-3">
-          <div className="h-2 w-32 overflow-hidden rounded-full bg-gray-800">
+          <div className="h-2 w-32 overflow-hidden rounded-full bg-white/10">
             <div className="h-full w-1/2 animate-pulse rounded-full" style={{ background: "var(--accent)" }} />
           </div>
-          <p className="text-sm">Connecting to <code className="font-mono">/{roomId}</code>...</p>
+          <p className="text-sm text-white/60">Connecting to <code className="font-mono text-white/80">/{roomId}</code>...</p>
         </div>
       </div>
     );
@@ -131,14 +125,13 @@ export function RoomClient({ roomId, identity, isAdmin: initialIsAdmin, isEmbed,
       audio
       data-lk-theme="default"
       style={{ height: "100vh", width: "100vw" }}
-      onDisconnected={() => router.push("/")}
     >
       <RoomAudioRenderer />
       <RoomV2
         roomId={roomId}
         isAdmin={initialIsAdmin}
         userName={userName}
-        onLeave={() => router.push("/")}
+        onLeave={() => window.history.back()}
         isEmbed={!!isEmbed}
       />
     </LiveKitRoom>
@@ -158,17 +151,15 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed }: { roomId: strin
   const [showAdmin, setShowAdmin] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
-  const [inLobby, setInLobby] = useState(false);
 
   // Poll room state
   useEffect(() => {
     let cancelled = false;
     async function refresh() {
       try {
-        const [roomRes, partsRes, settingsRes] = await Promise.all([
+        const [roomRes, partsRes] = await Promise.all([
           fetch(`/api/rooms/${roomId}`).then((r) => r.json()),
           fetch(`/api/rooms/${roomId}/participants`).then((r) => r.json()),
-          fetch(`/api/rooms/${roomId}/settings`).then((r) => r.json()),
         ]);
         if (cancelled) return;
         setRoomState({
@@ -181,19 +172,6 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed }: { roomId: strin
     const t = setInterval(refresh, 3000);
     return () => { cancelled = true; clearInterval(t); };
   }, [roomId]);
-
-  // Lobby detection
-  useEffect(() => {
-    if (!roomState.participants?.length || !userName) return;
-    const me = (roomState.participants as any[]).find(
-      (p: any) => p.identity === userName || p.name === userName
-    );
-    if (me && me.isMuted && me.isPublisher === false && roomState.locked) {
-      setInLobby(true);
-    } else {
-      setInLobby(false);
-    }
-  }, [roomState, userName]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -222,18 +200,6 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed }: { roomId: strin
     return () => document.removeEventListener("keydown", onKey);
   }, [roomId, userName, isAdmin]);
 
-  if (inLobby) {
-    return (
-      <LobbyScreen
-        roomId={roomId}
-        identity={userName}
-        userName={userName}
-        onAdmitted={() => setInLobby(false)}
-        onLeave={onLeave}
-      />
-    );
-  }
-
   return (
     <div className="relative flex h-full w-full flex-col bg-[#0a0a0f] text-white">
       <MeetingHeader
@@ -251,25 +217,26 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed }: { roomId: strin
       />
 
       {!isEmbed && (
-        <div className="flex items-center gap-2 border-b border-white/5 bg-black/30 px-4 py-1.5 text-xs">
-          <ViewToggle view={viewMode} onViewChange={setViewMode} pinned={null} onPinChange={() => {}} />
-          <span className="text-white/20">|</span>
+        <div className="flex items-center gap-3 border-b border-white/5 bg-[#0f0f14] px-5 py-2 text-xs">
+          <ViewToggle view={viewMode} onViewChange={setViewMode} />
+          <span className="h-3 w-px bg-white/10" />
           <QualityControl />
           <NetworkStats />
-          <span className="text-white/20">|</span>
+          <span className="h-3 w-px bg-white/10" />
           <button
             onClick={() => setShowShortcuts(true)}
-            className="rounded border border-white/10 bg-white/5 px-2 py-0.5 text-white/70 hover:bg-white/10"
+            className="flex items-center gap-1 rounded px-2 py-1 text-white/50 hover:bg-white/5 hover:text-white"
             title="Keyboard shortcuts"
           >
-            <kbd>?</kbd>
+            <Icon.Keyboard size={12} />
+            <span>Shortcuts</span>
           </button>
         </div>
       )}
 
       <div className="flex flex-1 overflow-hidden">
-        <main className="relative flex-1 overflow-hidden">
-          <VideoConference />
+        <main className="relative flex-1 overflow-hidden bg-[#0a0a0f]">
+          <CustomVideoGrid viewMode={viewMode} userName={userName} />
           <FloatingReactions roomId={roomId} />
         </main>
         {sidebarTab && (
@@ -300,7 +267,6 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed }: { roomId: strin
         onLeave={onLeave}
       />
 
-      {/* Lazy-loaded overlays */}
       {showShare && <ShareModal roomId={roomId} onClose={() => setShowShare(false)} />}
       {showSettings && isAdmin && <SettingsPanel roomId={roomId} onClose={() => setShowSettings(false)} />}
       {showAdmin && isAdmin && (
