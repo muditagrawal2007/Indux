@@ -166,9 +166,43 @@ function init(db: Database.Database) {
       action_items TEXT NOT NULL DEFAULT '[]',
       generated_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
     );
+  CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        email TEXT UNIQUE NOT NULL,
+        name TEXT NOT NULL,
+        password_hash TEXT,
+        avatar_color TEXT DEFAULT 'indigo',
+        created_at INTEGER NOT NULL,
+        updated_at INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+
+      CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        token_hash TEXT NOT NULL UNIQUE,
+        expires_at INTEGER NOT NULL,
+        user_agent TEXT,
+        ip TEXT,
+        created_at INTEGER NOT NULL,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+      CREATE INDEX IF NOT EXISTS idx_sessions_user ON sessions(user_id);
+      CREATE INDEX IF NOT EXISTS idx_sessions_hash ON sessions(token_hash);
+
+      CREATE TABLE IF NOT EXISTS oauth_accounts (
+        id TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL,
+        provider TEXT NOT NULL,
+        provider_user_id TEXT NOT NULL,
+        email TEXT,
+        created_at INTEGER NOT NULL,
+        UNIQUE(provider, provider_user_id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      );
+
   `);
 }
-
 // === Chat ===
 export type ChatMessage = {
   id: number;
@@ -348,6 +382,43 @@ export function listHandRaises(room: string): Array<{ identity: string; raised_a
   return db
     .prepare(`SELECT identity, raised_at FROM hand_raises WHERE room = ? ORDER BY raised_at`)
     .all(room) as Array<{ identity: string; raised_at: number }>;
+}
+
+
+// === Auth ===
+export type User = {
+  id: string;
+  email: string;
+  name: string;
+  password_hash: string | null;
+  avatar_color: string;
+  created_at: number;
+  updated_at: number;
+};
+
+export type Session = {
+  id: string;
+  user_id: string;
+  token_hash: string;
+  expires_at: number;
+  user_agent: string | null;
+  ip: string | null;
+  created_at: number;
+};
+
+export type OAuthAccount = {
+  id: string;
+  user_id: string;
+  provider: "google" | "github";
+  provider_user_id: string;
+  email: string | null;
+  created_at: number;
+};
+
+export function ensureAuthSchema() {
+  const db = getDb();
+  db.exec(`
+      `);
 }
 
 // === Settings (admin-togglable per-room) ===

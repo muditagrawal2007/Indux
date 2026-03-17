@@ -9,6 +9,19 @@ import { Icon } from "./components/Icons";
 export default function InduxLauncher() {
   const router = useRouter();
   const [name, setName] = useState("");
+  const [user, setUser] = useState<{ id: string; email: string; name: string; avatar_color: string } | null>(null);
+
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.user) {
+          setUser(data.user);
+          setName(data.user.name);
+        }
+      })
+      .catch(() => {});
+  }, []);
   const [joinCode, setJoinCode] = useState("");
 
   useEffect(() => {
@@ -31,6 +44,10 @@ export default function InduxLauncher() {
 
   function startWithName() {
     const trimmed = name.trim();
+    if (user) {
+      router.push(`/u/${user.email.split("@")[0].toLowerCase()}?name=${encodeURIComponent(user.name)}&admin=1`);
+      return;
+    }
     if (!trimmed) return;
     const slug = trimmed.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24);
     if (!slug) return;
@@ -83,6 +100,26 @@ export default function InduxLauncher() {
             <Link href="/settings" className="rounded-md px-3 py-1.5 text-sm text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-elevated)]">
               Settings
             </Link>
+            {user ? (
+              <Link href="/profile" className="flex items-center gap-2 rounded-md border border-[color:var(--border)] bg-[color:var(--bg)] px-2 py-1 hover:bg-[color:var(--bg-elevated)]">
+                <span
+                  className="grid h-6 w-6 place-items-center rounded-full text-[10px] font-bold text-white"
+                  style={{ background: user.avatar_color === "rose" ? "linear-gradient(135deg,#f43f5e,#e11d48)" :
+                    user.avatar_color === "violet" ? "linear-gradient(135deg,#8b5cf6,#6d28d9)" :
+                    user.avatar_color === "amber" ? "linear-gradient(135deg,#f59e0b,#d97706)" :
+                    user.avatar_color === "emerald" ? "linear-gradient(135deg,#10b981,#059669)" :
+                    user.avatar_color === "cyan" ? "linear-gradient(135deg,#06b6d4,#0891b2)" :
+                    "linear-gradient(135deg,#6366f1,#4f46e5)" }}
+                >
+                  {user.name.split(" ").map((p) => p[0]).join("").toUpperCase().slice(0, 2)}
+                </span>
+                <span className="text-xs font-medium">{user.name.split(" ")[0]}</span>
+              </Link>
+            ) : (
+              <Link href="/login" className="rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-sm font-medium text-white hover:opacity-90">
+                Sign in
+              </Link>
+            )}
             <button
               onClick={toggleTheme}
               aria-label="Toggle theme"
