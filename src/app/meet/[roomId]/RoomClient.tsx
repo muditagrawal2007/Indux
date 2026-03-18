@@ -65,6 +65,9 @@ export function RoomClient({ roomId, identity, isAdmin: initialIsAdmin, isEmbed,
     }
   }
 
+  const [initialAudioOn, setInitialAudioOn] = useState(true);
+  const [initialVideoOn, setInitialVideoOn] = useState(true);
+
   if (!joined) {
     return (
       <CustomPreJoin
@@ -72,8 +75,10 @@ export function RoomClient({ roomId, identity, isAdmin: initialIsAdmin, isEmbed,
         isAdmin={initialIsAdmin}
         initialName={userName}
         isEmbed={!!isEmbed}
-        onJoin={(name) => {
+        onJoin={(name, a, v) => {
           setUserName(name);
+          setInitialAudioOn(a);
+          setInitialVideoOn(v);
           setJoined(true);
           fetchToken(name, initialIsAdmin);
         }}
@@ -121,8 +126,8 @@ export function RoomClient({ roomId, identity, isAdmin: initialIsAdmin, isEmbed,
       serverUrl={serverUrl}
       token={token}
       connect
-      video
-      audio
+      video={initialVideoOn}
+      audio={initialAudioOn}
       data-lk-theme="default"
       style={{ height: "100vh", width: "100vw" }}
     >
