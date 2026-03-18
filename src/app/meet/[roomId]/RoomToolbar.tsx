@@ -1,19 +1,16 @@
 "use client";
 
 // Zoom-style bottom toolbar
-// Round buttons, mute=gray/unmute=red, video on=gray/off=red
-// Center: Mute | Stop Video | Share | Chat | People | Polls | React | Record
-// Right: Leave (red)
+// Round buttons with text labels
+// Mute=red when muted, Stop Video=red when cam off (Zoom signature)
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { useLocalParticipant } from "@livekit/components-react";
 import { Icon } from "../../components/Icons";
 
 type Tab = "chat" | "people" | "qa" | "notes" | null;
 
-export function RoomToolbar({
-  roomId, userName, isAdmin, recording, setRecording, activeTab, onTab, onShare, onWhiteboard, onNotes, onTranscript, onLeave,
-}: {
+type Props = {
   roomId: string;
   userName: string;
   isAdmin: boolean;
@@ -25,13 +22,18 @@ export function RoomToolbar({
   onWhiteboard: () => void;
   onNotes: () => void;
   onTranscript: () => void;
+  onSettings: () => void;
   onLeave: () => void;
-}) {
+};
+
+export function RoomToolbar({
+  roomId, userName, isAdmin, recording, setRecording, activeTab, onTab, onShare, onWhiteboard, onNotes, onTranscript, onSettings, onLeave,
+}: Props) {
   const { localParticipant } = useLocalParticipant();
-  const [micOn, setMicOn] = useState(true);
-  const [camOn, setCamOn] = useState(true);
-  const [reactionsOpen, setReactionsOpen] = useState(false);
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [micOn, setMicOn] = useStateLocal(true);
+  const [camOn, setCamOn] = useStateLocal(true);
+  const [reactionsOpen, setReactionsOpen] = useStateLocal(false);
+  const [moreOpen, setMoreOpen] = useStateLocal(false);
 
   async function toggleMic() {
     if (!localParticipant) return;
@@ -80,7 +82,6 @@ export function RoomToolbar({
 
         {/* Center: Zoom-style round buttons */}
         <div className="flex items-center gap-2">
-          {/* Mute / Unmute */}
           <ZoomButton
             active={micOn}
             activeIcon={<Icon.Mic size={20} />}
@@ -89,8 +90,6 @@ export function RoomToolbar({
             labelActive="Mute"
             labelInactive="Unmute"
           />
-
-          {/* Camera on/off */}
           <ZoomButton
             active={camOn}
             activeIcon={<Icon.Video size={20} />}
@@ -99,82 +98,55 @@ export function RoomToolbar({
             labelActive="Stop Video"
             labelInactive="Start Video"
           />
-
-          {/* Share screen */}
           <ZoomButton
-            active={true}
+            active
             activeIcon={<Icon.ScreenShare size={20} />}
-            inactiveIcon={<Icon.ScreenShare size={20} />}
             onClick={onShare}
             labelActive="Share"
-            labelInactive="Share"
             alwaysActive
           />
-
-          {/* Chat */}
           <ZoomButton
-            active={activeTab === "chat"}
+            active
             activeIcon={<Icon.MessageSquare size={20} />}
-            inactiveIcon={<Icon.MessageSquare size={20} />}
             onClick={() => onTab(activeTab === "chat" ? null : "chat")}
             labelActive="Chat"
-            labelInactive="Chat"
             highlight={activeTab === "chat"}
           />
-
-          {/* People */}
           <ZoomButton
-            active={activeTab === "people"}
+            active
             activeIcon={<Icon.Users size={20} />}
-            inactiveIcon={<Icon.Users size={20} />}
             onClick={() => onTab(activeTab === "people" ? null : "people")}
             labelActive="Participants"
-            labelInactive="Participants"
             highlight={activeTab === "people"}
           />
-
-          {/* Polls */}
           <ZoomButton
-            active={activeTab === "qa"}
+            active
             activeIcon={<Icon.BarChart size={20} />}
-            inactiveIcon={<Icon.BarChart size={20} />}
             onClick={() => onTab(activeTab === "qa" ? null : "qa")}
             labelActive="Polls"
-            labelInactive="Polls"
             highlight={activeTab === "qa"}
           />
 
-          {/* Reactions */}
+          {/* Reactions menu */}
           <div className="relative">
             <ZoomButton
-              active={true}
-              activeIcon={<span className="text-base">😀</span>}
-              inactiveIcon={<span className="text-base">😀</span>}
+              active
+              activeIcon={<span className="text-lg">😀</span>}
               onClick={() => setReactionsOpen((v) => !v)}
               labelActive="Reactions"
-              labelInactive="Reactions"
               alwaysActive
             />
             {reactionsOpen && (
               <div
-                className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-xl border border-white/10 bg-[#15151b] p-2 shadow-2xl"
+                className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-2xl border border-white/10 bg-[#1a1a25] p-1.5 shadow-2xl"
                 onMouseLeave={() => setReactionsOpen(false)}
               >
-                <div className="flex gap-1">
-                  {[
-                    { e: "thumbs", icon: "👍" },
-                    { e: "clap", icon: "👏" },
-                    { e: "heart", icon: "❤️" },
-                    { e: "laugh", icon: "😂" },
-                    { e: "raise", icon: "✋" },
-                  ].map((r) => (
+                <div className="flex gap-0.5">
+                  {[{ e: "thumbs", icon: "👍" }, { e: "clap", icon: "👏" }, { e: "heart", icon: "❤" }, { e: "laugh", icon: "😂" }, { e: "fire", icon: "🔥" }, { e: "party", icon: "🎉" }].map((r) => (
                     <button
                       key={r.e}
-                      onClick={() => {
-                        if (r.e === "raise") raiseHand();
-                        else sendReaction(r.e);
-                      }}
-                      className="grid h-10 w-10 place-items-center rounded-lg text-2xl hover:bg-white/10"
+                      onClick={() => sendReaction(r.e)}
+                      className="grid h-10 w-10 place-items-center rounded-xl text-2xl hover:bg-white/10 hover:scale-125 transition-transform"
                       title={r.e}
                     >
                       {r.icon}
@@ -188,23 +160,22 @@ export function RoomToolbar({
           {/* More menu */}
           <div className="relative">
             <ZoomButton
-              active={true}
+              active
               activeIcon={<Icon.More size={20} />}
-              inactiveIcon={<Icon.More size={20} />}
               onClick={() => setMoreOpen((v) => !v)}
               labelActive="More"
-              labelInactive="More"
               alwaysActive
             />
             {moreOpen && (
               <div
-                className="absolute bottom-full left-1/2 mb-2 w-48 -translate-x-1/2 rounded-xl border border-white/10 bg-[#15151b] p-1 shadow-2xl"
+                className="absolute bottom-full left-1/2 mb-2 w-56 -translate-x-1/2 rounded-xl border border-white/10 bg-[#1a1a25] p-1 shadow-2xl"
                 onMouseLeave={() => setMoreOpen(false)}
               >
                 <MoreItem icon={<Icon.Hand size={16} />} label="Raise hand" onClick={() => { raiseHand(); setMoreOpen(false); }} />
                 <MoreItem icon={<Icon.Pencil size={16} />} label="Whiteboard" onClick={() => { onWhiteboard(); setMoreOpen(false); }} />
                 <MoreItem icon={<Icon.FileText size={16} />} label="Notes" onClick={() => { onNotes(); setMoreOpen(false); }} />
                 <MoreItem icon={<Icon.FileText size={16} />} label="Transcript" onClick={() => { onTranscript(); setMoreOpen(false); }} />
+                <MoreItem icon={<Icon.Settings size={16} />} label="Settings" onClick={() => { onSettings(); setMoreOpen(false); }} />
                 {isAdmin && (
                   <RecBtnInline
                     recording={recording}
@@ -231,15 +202,30 @@ export function RoomToolbar({
   );
 }
 
+// Mini useState wrapper
+function useStateLocal<T>(initial: T): [T, (v: T) => void] {
+  const ref = useRef(initial);
+  const [, force] = React.useState(0);
+  return [
+    ref.current,
+    (v: T) => {
+      ref.current = v;
+      force((n) => n + 1);
+    },
+  ];
+}
+
+import * as React from "react";
+
 function ZoomButton({
   active, activeIcon, inactiveIcon, onClick, labelActive, labelInactive, alwaysActive, highlight,
 }: {
   active: boolean;
   activeIcon: React.ReactNode;
-  inactiveIcon: React.ReactNode;
+  inactiveIcon?: React.ReactNode;
   onClick: () => void;
   labelActive: string;
-  labelInactive: string;
+  labelInactive?: string;
   alwaysActive?: boolean;
   highlight?: boolean;
 }) {
@@ -247,8 +233,8 @@ function ZoomButton({
   return (
     <button
       onClick={onClick}
-      title={alwaysActive ? labelActive : (active ? labelActive : labelInactive)}
-      aria-label={alwaysActive ? labelActive : (active ? labelActive : labelInactive)}
+      title={alwaysActive ? labelActive : (active ? labelActive : (labelInactive ?? labelActive))}
+      aria-label={alwaysActive ? labelActive : (active ? labelActive : (labelInactive ?? labelActive))}
       className="group flex flex-col items-center gap-0.5"
     >
       <span
@@ -262,10 +248,10 @@ function ZoomButton({
         }
         style={highlight ? { background: "var(--accent)" } : {}}
       >
-        {active ? activeIcon : inactiveIcon}
+        {active ? activeIcon : (inactiveIcon ?? activeIcon)}
       </span>
       <span className="text-[10px] text-white/60 group-hover:text-white/80">
-        {alwaysActive ? labelActive : (active ? labelActive : labelInactive)}
+        {alwaysActive ? labelActive : (active ? labelActive : (labelInactive ?? labelActive))}
       </span>
     </button>
   );

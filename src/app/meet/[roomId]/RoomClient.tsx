@@ -18,7 +18,9 @@ import "@livekit/components-styles";
 import { MeetingHeader } from "./MeetingHeader";
 import { RoomToolbar } from "./RoomToolbar";
 import { SidePanel } from "./SidePanel";
-import { FloatingReactions } from "./FloatingBits";
+import { FloatingReactions } from "./Reactions";
+import { InRoomSettings } from "./InRoomSettings";
+import { ParticipantsPanel } from "./ParticipantsPanel";
 import { LobbyScreen } from "./Lobby";
 import { NetworkStats } from "./NetworkStats";
 import { QualityControl } from "./QualityControl";
@@ -149,6 +151,7 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed }: { roomId: strin
   const [viewMode, setViewMode] = useState<"tile" | "stage">("tile");
   const [sidebarTab, setSidebarTab] = useState<Tab>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [inRoomSettings, setInRoomSettings] = useState(false);
   const [showWhiteboard, setShowWhiteboard] = useState(false);
   const [showQA, setShowQA] = useState(false);
   const [showTranscript, setShowTranscript] = useState(false);
@@ -274,6 +277,7 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed }: { roomId: strin
 
       {showShare && <ShareModal roomId={roomId} onClose={() => setShowShare(false)} />}
       {showSettings && isAdmin && <SettingsPanel roomId={roomId} onClose={() => setShowSettings(false)} />}
+      {inRoomSettings && <InRoomSettings onClose={() => setInRoomSettings(false)} />}
       {showAdmin && isAdmin && (
         <AdminPanel
           roomId={roomId}

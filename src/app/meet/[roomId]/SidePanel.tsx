@@ -5,6 +5,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "../../components/Icons";
+import { MessageReactions } from "./Reactions";
+import { ParticipantsPanel } from "./ParticipantsPanel";
 
 type Tab = "chat" | "people" | "qa" | "notes";
 
@@ -40,7 +42,7 @@ export function SidePanel({
       </div>
       <div className="flex-1 overflow-hidden">
         {tab === "chat" && <ChatTab roomId={roomId} identity={identity} userName={userName} />}
-        {tab === "people" && <PeopleTab roomId={roomId} isAdmin={isAdmin} identity={identity} />}
+        {tab === "people" && <ParticipantsPanel roomId={roomId} isAdmin={isAdmin} identity={identity} />}
         {tab === "qa" && <QATab roomId={roomId} identity={identity} userName={userName} isAdmin={isAdmin} />}
         {tab === "notes" && <NotesTab roomId={roomId} identity={identity} userName={userName} />}
       </div>
@@ -52,6 +54,7 @@ export function SidePanel({
 function ChatTab({ roomId, identity, userName }: { roomId: string; identity: string; userName: string }) {
   const [msgs, setMsgs] = useState<any[]>([]);
   const [text, setText] = useState("");
+  const [refreshKey, setRefreshKey] = useState(0);
   const sinceRef = useRef(0);
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -91,17 +94,54 @@ function ChatTab({ roomId, identity, userName }: { roomId: string; identity: str
     <div className="flex h-full flex-col">
       <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto p-3 text-sm">
         <p className="py-12 text-center text-xs text-white/40">No messages yet. Say hi.</p>
-        {msgs.map((m) => (
-          <div key={m.id} className="break-words">
-            <div className="flex items-baseline gap-2">
-              <span className="text-[11px] font-medium text-white/80">{m.name || m.identity}</span>
-              <span className="text-[10px] text-white/30">
-                {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </span>
+        {msgs.map((m) => {
+          let reactions: Record<string, string[]> = {};
+          try {
+            const meta = m.meta ? JSON.parse(m.meta) : {};
+            reactions = meta.reactions ?? {};
+          } catch {}
+          return (
+            <div key={m.id} className="group relative break-words rounded-lg px-2 py-1.5 hover:bg-white/5">
+              <div className="flex items-baseline gap-2">
+                <span className="text-[11px] font-medium text-white/80">{m.name || m.identity}</span>
+                <span className="text-[10px] text-white/30">
+                  {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              </div>
+              <div className="text-white/90">{m.body}</div>
+              {Object.keys(reactions).length > 0 && (
+                <div className="mt-1">
+                  <MessageReactions
+                    messageId={String(m.id)}
+                    roomId={roomId}
+                    identity={identity}
+                    reactions={reactions}
+                  />
+                </div>
+              )}
+              {/* Hover actions */}
+              <div className="absolute -top-2 right-1 hidden gap-0.5 rounded-full border border-white/10 bg-[#1a1a25] p-0.5 opacity-0 shadow-lg transition-opacity group-hover:flex group-hover:opacity-100">
+                {[{ e: "👍" }, { e: "❤" }, { e: "😂" }, { e: "🎉" }].map((r) => (
+                  <button
+                    key={r.e}
+                    onClick={async () => {
+                      await fetch(`/api/rooms/${roomId}/chat/${m.id}/reactions`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ identity, emoji: r.e }),
+                      });
+                      // Trigger refresh
+                      setRefreshKey((k) => k + 1);
+                    }}
+                    className="grid h-7 w-7 place-items-center rounded-full text-sm hover:bg-white/10"
+                  >
+                    {r.e}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="text-white/90">{m.body}</div>
-          </div>
-        ))}
+          );
+        })}
       </div>
       <form
         onSubmit={(e) => { e.preventDefault(); send(); }}
