@@ -28,6 +28,7 @@ type Props = {
 
 export function RoomToolbar({
   roomId, userName, isAdmin, recording, setRecording, activeTab, onTab, onShare, onWhiteboard, onNotes, onTranscript, onSettings, onLeave,
+  canPublish = true,
 }: Props) {
   const { localParticipant } = useLocalParticipant();
   const [micOn, setMicOn] = useStateLocal(true);
@@ -36,17 +37,26 @@ export function RoomToolbar({
   const [moreOpen, setMoreOpen] = useStateLocal(false);
 
   async function toggleMic() {
-    if (!localParticipant) return;
-    const next = !micOn;
-    setMicOn(next);
-    await localParticipant.setMicrophoneEnabled(next);
+    if (!localParticipant || !canPublish) return;
+    try {
+      const next = !micOn;
+      setMicOn(next);
+      await localParticipant.setMicrophoneEnabled(next);
+    } catch (e) {
+      // Permission denied — revert UI state
+      setMicOn(!micOn);
+    }
   }
 
   async function toggleCam() {
-    if (!localParticipant) return;
-    const next = !camOn;
-    setCamOn(next);
-    await localParticipant.setCameraEnabled(next);
+    if (!localParticipant || !canPublish) return;
+    try {
+      const next = !camOn;
+      setCamOn(next);
+      await localParticipant.setCameraEnabled(next);
+    } catch (e) {
+      setCamOn(!camOn);
+    }
   }
 
   async function sendReaction(emoji: string) {
@@ -67,7 +77,7 @@ export function RoomToolbar({
   }
 
   return (
-    <footer className="border-t border-black/30 bg-[#0a0a0f] px-4 py-3">
+    <footer className="border-t border-black/30 bg-[#0a0a0f] px-4 py-2.5">
       <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
         {/* Left: room info */}
         <div className="flex items-center gap-2 text-sm text-white/60">
@@ -78,50 +88,56 @@ export function RoomToolbar({
               Recording
             </span>
           )}
+          {!canPublish && (
+            <span className="flex items-center gap-1.5 rounded bg-yellow-500/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-yellow-300">
+              <Icon.Lock size={10} />
+              Waiting for host
+            </span>
+          )}
         </div>
 
         {/* Center: Zoom-style round buttons */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <ZoomButton
             active={micOn}
-            activeIcon={<Icon.Mic size={20} />}
-            inactiveIcon={<Icon.MicOff size={20} />}
+            activeIcon={<Icon.Mic size={18} />}
+            inactiveIcon={<Icon.MicOff size={18} />}
             onClick={toggleMic}
             labelActive="Mute"
             labelInactive="Unmute"
           />
           <ZoomButton
             active={camOn}
-            activeIcon={<Icon.Video size={20} />}
-            inactiveIcon={<Icon.VideoOff size={20} />}
+            activeIcon={<Icon.Video size={18} />}
+            inactiveIcon={<Icon.VideoOff size={18} />}
             onClick={toggleCam}
             labelActive="Stop Video"
             labelInactive="Start Video"
           />
           <ZoomButton
             active
-            activeIcon={<Icon.ScreenShare size={20} />}
+            activeIcon={<Icon.ScreenShare size={18} />}
             onClick={onShare}
             labelActive="Share"
             alwaysActive
           />
           <ZoomButton
             active
-            activeIcon={<Icon.MessageSquare size={20} />}
+            activeIcon={<Icon.MessageSquare size={18} />}
             onClick={() => onTab(activeTab === "chat" ? null : "chat")}
             labelActive="Chat"
             highlight={activeTab === "chat"}
           />
           <ZoomButton
             active
-            activeIcon={<Icon.Users size={20} />}
+            activeIcon={<Icon.Users size={18} />}
             onClick={() => onTab(activeTab === "people" ? null : "people")}
             labelActive="Participants"
             highlight={activeTab === "people"}
           />
           <ZoomButton
             active
-            activeIcon={<Icon.BarChart size={20} />}
+            activeIcon={<Icon.BarChart size={18} />}
             onClick={() => onTab(activeTab === "qa" ? null : "qa")}
             labelActive="Polls"
             highlight={activeTab === "qa"}
@@ -131,9 +147,9 @@ export function RoomToolbar({
           <div className="relative">
             <ZoomButton
               active
-              activeIcon={<span className="text-lg">😀</span>}
+              activeIcon={<span className="text-base">😀</span>}
               onClick={() => setReactionsOpen((v) => !v)}
-              labelActive="Reactions"
+              labelActive="React"
               alwaysActive
             />
             {reactionsOpen && (
@@ -161,7 +177,7 @@ export function RoomToolbar({
           <div className="relative">
             <ZoomButton
               active
-              activeIcon={<Icon.More size={20} />}
+              activeIcon={<Icon.More size={18} />}
               onClick={() => setMoreOpen((v) => !v)}
               labelActive="More"
               alwaysActive
@@ -239,7 +255,7 @@ function ZoomButton({
     >
       <span
         className={
-          "flex h-10 w-10 items-center justify-center rounded-full transition-all " +
+          "flex h-9 w-9 items-center justify-center rounded-full transition-all " +
           (highlight
             ? "text-white"
             : isOff
@@ -250,7 +266,7 @@ function ZoomButton({
       >
         {active ? activeIcon : (inactiveIcon ?? activeIcon)}
       </span>
-      <span className="text-[10px] text-white/60 group-hover:text-white/80">
+      <span className="text-[10px] leading-tight text-white/60 group-hover:text-white/80">
         {alwaysActive ? labelActive : (active ? labelActive : (labelInactive ?? labelActive))}
       </span>
     </button>

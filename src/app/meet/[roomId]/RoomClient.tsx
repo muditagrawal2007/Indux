@@ -159,6 +159,25 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed }: { roomId: strin
   const [showAdmin, setShowAdmin] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [inLobby, setInLobby] = useState(false);
+
+// Detect lobby state — disabled track controls if user can't publish
+  useEffect(() => {
+    if (!roomState.participants?.length || !userName) {
+      setInLobby(false);
+      return;
+    }
+    const me = (roomState.participants as any[]).find(
+      (p: any) => p.identity === userName || p.name === userName
+    );
+    if (!me) {
+      setInLobby(false);
+      return;
+    }
+    const cantPublish = me.permission?.canPublish === false ||
+                        me.isPublisher === false;
+    setInLobby(cantPublish && !!roomState.locked);
+  }, [roomState, userName]);
 
   // Poll room state
   useEffect(() => {
@@ -208,6 +227,18 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed }: { roomId: strin
     return () => document.removeEventListener("keydown", onKey);
   }, [roomId, userName, isAdmin]);
 
+  if (inLobby) {
+    return (
+      <LobbyScreen
+        roomId={roomId}
+        identity={userName}
+        userName={userName}
+        onAdmitted={() => setInLobby(false)}
+        onLeave={() => window.history.back()}
+      />
+    );
+  }
+
   return (
     <div className="relative flex h-full w-full flex-col bg-[#0a0a0f] text-white">
       <MeetingHeader
@@ -225,19 +256,17 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed }: { roomId: strin
       />
 
       {!isEmbed && (
-        <div className="flex items-center gap-3 border-b border-white/5 bg-[#0f0f14] px-5 py-2 text-xs">
+        <div className="flex items-center gap-2 border-b border-white/5 bg-[#0f0f14] px-5 py-1.5 text-xs">
           <ViewToggle view={viewMode} onViewChange={setViewMode} />
           <span className="h-3 w-px bg-white/10" />
           <QualityControl />
           <NetworkStats />
-          <span className="h-3 w-px bg-white/10" />
           <button
             onClick={() => setShowShortcuts(true)}
-            className="flex items-center gap-1 rounded px-2 py-1 text-white/50 hover:bg-white/5 hover:text-white"
+            className="ml-auto flex items-center gap-1 rounded px-1.5 py-0.5 text-white/40 hover:bg-white/5 hover:text-white"
             title="Keyboard shortcuts"
           >
-            <Icon.Keyboard size={12} />
-            <span>Shortcuts</span>
+            <Icon.Keyboard size={11} />
           </button>
         </div>
       )}
@@ -273,6 +302,7 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed }: { roomId: strin
         onNotes={() => setShowNotes(true)}
         onTranscript={() => setShowTranscript(true)}
         onLeave={onLeave}
+        canPublish={!inLobby}
       />
 
       {showShare && <ShareModal roomId={roomId} onClose={() => setShowShare(false)} />}
