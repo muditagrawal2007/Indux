@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Icon } from "../components/Icons";
 
 type Theme = "light" | "dark" | "system";
 type Accent = "indigo" | "violet" | "rose" | "amber" | "emerald" | "cyan" | "slate";
@@ -85,21 +86,21 @@ export default function SettingsPage() {
             <Card
               active={theme === "light"}
               onClick={() => update("theme", "light")}
-              icon="☀"
+              icon={<Icon.Sun size={20} />}
               label="Light"
               desc="Always light"
             />
             <Card
               active={theme === "dark"}
               onClick={() => update("theme", "dark")}
-              icon="🌙"
+              icon={<Icon.Moon size={20} />}
               label="Dark"
               desc="Easy on the eyes"
             />
             <Card
               active={theme === "system"}
               onClick={() => update("theme", "system")}
-              icon="◐"
+              icon={<Icon.Globe size={20} />}
               label="System"
               desc="Follow OS preference"
             />
@@ -184,7 +185,7 @@ function Section({ title, desc, children }: { title: string; desc?: string; chil
   );
 }
 
-function Card({ active, onClick, icon, label, desc }: { active: boolean; onClick: () => void; icon: string; label: string; desc: string }) {
+function Card({ active, onClick, icon, label, desc }: { active: boolean; onClick: () => void; icon: React.ReactNode; label: string; desc: string }) {
   return (
     <button
       onClick={onClick}
@@ -195,7 +196,7 @@ function Card({ active, onClick, icon, label, desc }: { active: boolean; onClick
           : "border-[color:var(--border)] hover:border-[color:var(--border-strong)]")
       }
     >
-      <div className="text-2xl">{icon}</div>
+      <div className="text-[color:var(--text-secondary)]">{icon}</div>
       <div className="mt-2 font-medium">{label}</div>
       <div className="text-xs text-[color:var(--text-secondary)]">{desc}</div>
     </button>

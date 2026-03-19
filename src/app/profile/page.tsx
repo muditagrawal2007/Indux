@@ -17,6 +17,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth/me")
@@ -36,8 +37,8 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#0a0a0f] text-white">
-        <div className="h-2 w-32 overflow-hidden rounded-full bg-white/10">
+      <div className="flex min-h-screen items-center justify-center bg-[color:var(--bg)]">
+        <div className="h-2 w-32 overflow-hidden rounded-full bg-[color:var(--bg-sunken)]">
           <div className="h-full w-1/2 animate-pulse rounded-full" style={{ background: "var(--accent)" }} />
         </div>
       </div>
@@ -59,62 +60,99 @@ export default function ProfilePage() {
   }[user.avatar_color] || "linear-gradient(135deg, #6366f1, #4f46e5)";
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
-      <header className="border-b border-white/10">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
-          <Link href="/" className="flex items-center gap-2.5">
-            <div
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold text-white"
-              style={{ background: "linear-gradient(135deg, var(--accent), #4f46e5)" }}
-            >
-              IX
-            </div>
-            <span className="text-sm font-semibold">Indux Meet</span>
+    <div className="min-h-screen bg-[color:var(--bg)] text-[color:var(--text-primary)] transition-colors duration-200">
+      <header className="sticky top-0 z-30 border-b border-[color:var(--border)] bg-[color:var(--bg-overlay)] backdrop-blur-md">
+        <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-6">
+          <Link href="/" className="flex items-center gap-2 text-sm text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] transition-colors">
+            <Icon.Arrow size={14} />
+            Back
           </Link>
+          <h1 className="text-sm font-semibold">Profile</h1>
+          <div className="w-12" />
         </div>
       </header>
 
-      <main className="mx-auto max-w-2xl px-6 pt-16 pb-16">
-        <div className="flex items-start gap-6">
+      <main className="mx-auto max-w-2xl px-6 pt-12 pb-16 space-y-6">
+        {/* Profile header */}
+        <div className="animate-fadeIn flex items-start gap-6">
           <div
-            className="grid h-24 w-24 shrink-0 place-items-center rounded-2xl text-3xl font-semibold text-white"
+            className="grid h-24 w-24 shrink-0 place-items-center rounded-2xl text-3xl font-semibold text-white shadow-lg"
             style={{ background: grad }}
           >
             {initials}
           </div>
-          <div className="flex-1">
-            <h1 className="text-2xl font-semibold">{user.name}</h1>
-            <p className="mt-1 text-sm text-white/60">{user.email}</p>
-            <div className="mt-3 flex items-center gap-2 text-xs text-white/40">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-2xl font-semibold tracking-tight">{user.name}</h1>
+            <p className="mt-1 text-sm text-[color:var(--text-secondary)]">{user.email}</p>
+            <div className="mt-2 flex items-center gap-2 text-xs text-[color:var(--text-tertiary)]">
               <Icon.ShieldCheck size={12} />
               <span>Joined {new Date(user.created_at).toLocaleDateString()}</span>
             </div>
           </div>
           <button
             onClick={logout}
-            className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white hover:bg-white/10"
+            className="btn-outline flex items-center gap-2"
           >
             <Icon.Logout size={14} />
             Sign out
           </button>
         </div>
 
-        <div className="mt-8 rounded-2xl border border-white/10 bg-[#15151b] p-6">
-          <h2 className="text-base font-semibold">Your personal room</h2>
-          <p className="mt-1 text-sm text-white/60">
-            Share this link. Anyone with it can join your meeting.
-          </p>
-          <div className="mt-4 flex items-center gap-2 rounded-lg border border-white/10 bg-[#0a0a0f] px-3 py-2">
-            <Icon.Link size={14} className="text-white/40" />
-            <code className="flex-1 truncate font-mono text-sm text-white/80">{personalRoomLink}</code>
+        {/* Personal room */}
+        <div className="animate-fadeIn stagger-1 rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg)] p-6 shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[color:var(--accent)]/10 text-[color:var(--accent)]">
+              <Icon.Video size={18} />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold">Your personal room</h2>
+              <p className="text-xs text-[color:var(--text-secondary)]">
+                Share this link. Anyone with it can join your meeting.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-elevated)] px-3 py-2.5">
+            <Icon.Link size={14} className="shrink-0 text-[color:var(--text-muted)]" />
+            <code className="flex-1 truncate font-mono text-sm text-[color:var(--text-primary)]">{personalRoomLink}</code>
             <button
-              onClick={() => navigator.clipboard.writeText(window.location.origin + personalRoomLink)}
-              className="flex items-center gap-1.5 rounded-md border border-white/10 bg-white/5 px-2 py-1 text-xs hover:bg-white/10"
+              onClick={() => {
+                navigator.clipboard.writeText(window.location.origin + personalRoomLink);
+                setCopied(true);
+                setTimeout(() => setCopied(false), 1500);
+              }}
+              className="btn-ghost !px-2.5 !py-1 !text-xs flex items-center gap-1.5"
             >
-              <Icon.Copy size={12} />
-              Copy
+              {copied ? <><Icon.Check size={12} /> Copied</> : <><Icon.Copy size={12} /> Copy</>}
             </button>
           </div>
+        </div>
+
+        {/* Quick actions */}
+        <div className="animate-fadeIn stagger-2 grid grid-cols-2 gap-3">
+          <Link
+            href="/settings"
+            className="group flex items-center gap-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg)] p-4 transition-all duration-200 hover:border-[color:var(--accent)]/20 hover:bg-[color:var(--bg-elevated)]"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[color:var(--bg-sunken)] text-[color:var(--text-tertiary)] group-hover:bg-[color:var(--accent)]/10 group-hover:text-[color:var(--accent)] transition-colors">
+              <Icon.Settings size={16} />
+            </div>
+            <div>
+              <div className="text-sm font-medium">Appearance</div>
+              <div className="text-xs text-[color:var(--text-tertiary)]">Theme, accent, density</div>
+            </div>
+          </Link>
+          <Link
+            href="/schedule"
+            className="group flex items-center gap-3 rounded-xl border border-[color:var(--border)] bg-[color:var(--bg)] p-4 transition-all duration-200 hover:border-[color:var(--accent)]/20 hover:bg-[color:var(--bg-elevated)]"
+          >
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[color:var(--bg-sunken)] text-[color:var(--text-tertiary)] group-hover:bg-[color:var(--accent)]/10 group-hover:text-[color:var(--accent)] transition-colors">
+              <Icon.Calendar size={16} />
+            </div>
+            <div>
+              <div className="text-sm font-medium">Schedule</div>
+              <div className="text-xs text-[color:var(--text-tertiary)]">Plan meetings</div>
+            </div>
+          </Link>
         </div>
       </main>
     </div>

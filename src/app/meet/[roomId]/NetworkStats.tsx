@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useLocalParticipant, useConnectionState } from "@livekit/components-react";
-import { ConnectionState as LKState } from "livekit-client";
+import { ConnectionState as LKState, Track } from "livekit-client";
+import { Icon } from "../../components/Icons";
 
 type Stats = {
   bitrate: number;
@@ -22,7 +23,7 @@ export function NetworkStats() {
     if (!localParticipant) return;
     const t = setInterval(async () => {
       try {
-        const pub = localParticipant.getTrackPublication();
+        const pub = localParticipant.getTrackPublication(Track.Source.Camera as any);
         const videoTrack = pub?.videoTrack;
         const audioTrack = pub?.audioTrack;
 
@@ -57,36 +58,36 @@ export function NetworkStats() {
     return () => clearInterval(t);
   }, [localParticipant]);
 
-  // Use connection state as a proxy for quality
-  const qualityIcon =
-    connState === LKState.Connected ? "Excellent"
-    : connState === LKState.Connecting ? "Good"
-    : connState === LKState.Reconnecting ? "Fair"
-    : "Poor";
+  const qualityLabel =
+    connState === LKState.Connected ? "Good"
+    : connState === LKState.Connecting ? "Connecting..."
+    : connState === LKState.Reconnecting ? "Reconnecting..."
+    : "Disconnected";
 
   const qualityColor =
     connState === LKState.Connected ? "text-green-400"
-    : connState === LKState.Connecting ? "text-yellow-400"
+    : connState === LKState.Connecting ? "text-amber-400"
     : "text-red-400";
 
   return (
     <div className="relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1 text-xs hover:bg-gray-700"
+        className="flex items-center gap-1 rounded-lg bg-black/50 px-2 py-1 text-[10px] text-white/50 backdrop-blur-sm hover:bg-black/70 hover:text-white/70 transition-colors"
         title="Network stats"
       >
-        <span className={qualityColor}>{qualityIcon}</span>
+        <Icon.Wifi size={10} />
+        <span className={qualityColor}>{qualityLabel}</span>
       </button>
       {open && (
-        <div className="absolute bottom-full right-0 mb-1 w-64 rounded-lg border border-gray-700 bg-gray-950 p-3 text-xs shadow-xl">
-          <div className="mb-2 font-medium">Connection</div>
+        <div className="absolute bottom-full right-0 mb-2 w-60 rounded-xl border border-white/10 bg-[#1a1a24]/95 p-3 text-xs shadow-2xl backdrop-blur-xl">
+          <div className="mb-2 font-medium text-white/70">Connection</div>
           <Row k="State" v={connState} />
           <Row k="Bitrate" v={`${stats.bitrate} kbps`} />
           <Row k="Packet loss" v={`${stats.packetLoss}`} />
           <Row k="Jitter" v={`${stats.jitter} ms`} />
           <Row k="Frame rate" v={`${stats.frameRate} fps`} />
-          <p className="mt-2 text-[10px] text-gray-500">
+          <p className="mt-2 text-[10px] text-white/25">
             Updates every 1.5s · auto-adjusts on poor network
           </p>
         </div>
@@ -95,11 +96,11 @@ export function NetworkStats() {
   );
 }
 
-function Row({ k, v, color }: { k: string; v: string; color?: string }) {
+function Row({ k, v }: { k: string; v: string }) {
   return (
-    <div className="flex items-center justify-between border-t border-gray-800 py-1">
-      <span className="text-gray-500">{k}</span>
-      <span className={color || "text-gray-200"}>{v}</span>
+    <div className="flex items-center justify-between border-t border-white/5 py-1.5">
+      <span className="text-white/35">{k}</span>
+      <span className="text-white/70">{v}</span>
     </div>
   );
 }

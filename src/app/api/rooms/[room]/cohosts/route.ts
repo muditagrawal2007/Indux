@@ -44,9 +44,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ room: stri
           canPublish: true,
           canSubscribe: true,
           canPublishData: true,
-          roomAdmin: true,
-          roomCreate: true,
-        });
+        } as any);
       } catch {}
       return NextResponse.json({ ok: true, action, identity });
     }
@@ -58,9 +56,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ room: stri
           canPublish: true,
           canSubscribe: true,
           canPublishData: true,
-          roomAdmin: false,
-          roomCreate: false,
-        });
+        } as any);
       } catch {}
       return NextResponse.json({ ok: true, action, identity });
     }

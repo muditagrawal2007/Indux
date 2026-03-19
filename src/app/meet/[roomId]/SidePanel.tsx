@@ -4,7 +4,7 @@
 // Lightweight, no heavy deps
 
 import { useEffect, useRef, useState } from "react";
-import { Icon } from "../../components/Icons";
+import { Icon, Reaction } from "../../components/Icons";
 import { MessageReactions } from "./Reactions";
 import { ParticipantsPanel } from "./ParticipantsPanel";
 
@@ -22,23 +22,26 @@ export function SidePanel({
   onClose: () => void;
 }) {
   return (
-    <aside className="animate-slideInR flex w-96 max-w-[40vw] flex-col border-l border-white/10 bg-[#0f0f14]">
-      <div className="flex items-center gap-1 border-b border-white/10 px-3 py-2">
+    <aside className="animate-slideInR relative flex h-full w-[380px] max-w-[85vw] flex-col border-l border-white/10 bg-[#1a1a24]/95 backdrop-blur-2xl overflow-hidden">
+      {/* Header */}
+      <div className="flex items-center gap-1 border-b border-white/10 px-3 py-2.5">
         {(["chat", "people", "qa", "notes"] as const).map((t) => (
           <button
             key={t}
             onClick={() => onChangeTab(t)}
             className={
-              "rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors " +
-              (tab === t ? "bg-white/10 text-white" : "text-white/50 hover:text-white")
+              "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-150 " +
+              (tab === t ? "bg-white/10 text-white" : "text-white/40 hover:text-white/70 hover:bg-white/5")
             }
           >
-            <span className="mr-1 inline-flex">{t === "chat" ? <Icon.MessageSquare size={14} /> : t === "people" ? <Icon.Users size={14} /> : t === "qa" ? <Icon.Help size={14} /> : <Icon.FileText size={14} />}</span>
-            <span className="capitalize">{t}</span>
+            {t === "chat" ? <Icon.MessageSquare size={13} /> : t === "people" ? <Icon.Users size={13} /> : t === "qa" ? <Icon.Help size={13} /> : <Icon.FileText size={13} />}
+            <span className="capitalize hidden sm:inline">{t}</span>
           </button>
         ))}
         <div className="flex-1" />
-        <button onClick={onClose} className="rounded p-1 text-white/40 hover:bg-white/10 hover:text-white"></button>
+        <button onClick={onClose} className="rounded-lg p-1.5 text-white/40 hover:bg-white/5 hover:text-white/70 transition-colors">
+          <Icon.Close size={14} />
+        </button>
       </div>
       <div className="flex-1 overflow-hidden">
         {tab === "chat" && <ChatTab roomId={roomId} identity={identity} userName={userName} />}
@@ -93,7 +96,7 @@ function ChatTab({ roomId, identity, userName }: { roomId: string; identity: str
   return (
     <div className="flex h-full flex-col">
       <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto p-3 text-sm">
-        <p className="py-12 text-center text-xs text-white/40">No messages yet. Say hi.</p>
+        <p className="py-12 text-center text-xs text-[color:var(--text-muted)]">No messages yet. Say hi.</p>
         {msgs.map((m) => {
           let reactions: Record<string, string[]> = {};
           try {
@@ -101,14 +104,14 @@ function ChatTab({ roomId, identity, userName }: { roomId: string; identity: str
             reactions = meta.reactions ?? {};
           } catch {}
           return (
-            <div key={m.id} className="group relative break-words rounded-lg px-2 py-1.5 hover:bg-white/5">
+            <div key={m.id} className="group relative break-words rounded-lg px-3 py-2 hover:bg-white/5 transition-colors">
               <div className="flex items-baseline gap-2">
-                <span className="text-[11px] font-medium text-white/80">{m.name || m.identity}</span>
+                <span className="text-[11px] font-semibold text-white/80">{m.name || m.identity}</span>
                 <span className="text-[10px] text-white/30">
                   {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                 </span>
               </div>
-              <div className="text-white/90">{m.body}</div>
+              <div className="mt-0.5 text-[13px] leading-relaxed text-white/70">{m.body}</div>
               {Object.keys(reactions).length > 0 && (
                 <div className="mt-1">
                   <MessageReactions
@@ -120,22 +123,21 @@ function ChatTab({ roomId, identity, userName }: { roomId: string; identity: str
                 </div>
               )}
               {/* Hover actions */}
-              <div className="absolute -top-2 right-1 hidden gap-0.5 rounded-full border border-white/10 bg-[#1a1a25] p-0.5 opacity-0 shadow-lg transition-opacity group-hover:flex group-hover:opacity-100">
-                {[{ e: "👍" }, { e: "❤" }, { e: "😂" }, { e: "🎉" }].map((r) => (
+              <div className="absolute -top-2 right-1 hidden gap-0.5 rounded-full border border-white/10 bg-[#1a1a24] p-0.5 opacity-0 shadow-lg transition-opacity group-hover:flex group-hover:opacity-100">
+                {(["thumbs", "heart", "laugh", "party"] as const).map((r) => (
                   <button
-                    key={r.e}
+                    key={r}
                     onClick={async () => {
                       await fetch(`/api/rooms/${roomId}/chat/${m.id}/reactions`, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ identity, emoji: r.e }),
+                        body: JSON.stringify({ identity, emoji: r }),
                       });
-                      // Trigger refresh
                       setRefreshKey((k) => k + 1);
                     }}
-                    className="grid h-7 w-7 place-items-center rounded-full text-sm hover:bg-white/10"
+                    className="grid h-7 w-7 place-items-center rounded-full text-white/40 hover:bg-white/10 hover:text-white/70"
                   >
-                    {r.e}
+                    <Reaction kind={r} />
                   </button>
                 ))}
               </div>
@@ -145,16 +147,16 @@ function ChatTab({ roomId, identity, userName }: { roomId: string; identity: str
       </div>
       <form
         onSubmit={(e) => { e.preventDefault(); send(); }}
-        className="flex items-center gap-2 border-t border-white/10 p-2"
+        className="flex items-center gap-2 border-t border-white/10 p-3"
       >
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Message..."
-          className="flex-1 rounded-md border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-white placeholder:text-white/40 focus:border-white/30 focus:outline-none"
+          placeholder="Type a message..."
+          className="flex-1 rounded-xl bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all"
         />
-        <button type="submit" className="rounded-md bg-white/10 px-3 py-1.5 text-xs font-medium text-white hover:bg-white/20">
-          Send
+        <button type="submit" className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-all">
+          <Icon.Send size={16} />
         </button>
       </form>
     </div>
@@ -192,33 +194,28 @@ function PeopleTab({ roomId, isAdmin, identity }: { roomId: string; isAdmin: boo
 
   return (
     <div className="h-full overflow-y-auto p-3">
-      <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white/40">
+      <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-[color:var(--text-muted)]">
         In this meeting ({list.length})
       </div>
-      {list.length === 0 && <p className="text-xs text-white/40">Just you so far.</p>}
+      {list.length === 0 && <p className="text-xs text-[color:var(--text-muted)]">Just you so far.</p>}
       {list.map((p) => (
-        <div key={p.sid} className="group flex items-center justify-between gap-2 rounded-md px-2 py-2 hover:bg-white/5">
+        <div key={p.sid} className="group flex items-center justify-between gap-2 rounded-md px-2 py-2 hover:bg-[color:var(--bg-sunken)]/50">
           <div className="flex min-w-0 items-center gap-2">
-            <div className="h-7 w-7 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-purple-700 grid place-items-center text-xs font-semibold">
+            <div className="h-7 w-7 shrink-0 rounded-full grid place-items-center text-xs font-semibold text-white"
+              style={{ background: "linear-gradient(135deg, var(--accent), var(--brand-600))" }}>
               {p.name?.[0]?.toUpperCase() || p.identity?.[0]?.toUpperCase() || "?"}
             </div>
             <div className="min-w-0">
-              <div className="truncate text-sm">{p.name || p.identity}</div>
-              <div className="truncate text-[10px] text-white/40">{p.isMuted ? "Muted" : "Speaking"}</div>
+              <div className="truncate text-sm text-[color:var(--text-primary)]">{p.name || p.identity}</div>
+              <div className="truncate text-[10px] text-[color:var(--text-muted)]">{p.isMuted ? "Muted" : "Speaking"}</div>
             </div>
           </div>
           {isAdmin && p.identity !== identity && (
             <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-              <button
-                onClick={() => act("mute", { identity: p.identity })}
-                className="rounded px-1.5 py-0.5 text-[10px] text-white/60 hover:bg-white/10"
-              >
+              <button onClick={() => act("mute", { identity: p.identity })} className="rounded px-1.5 py-0.5 text-[10px] text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-sunken)]">
                 Mute
               </button>
-              <button
-                onClick={() => { if (confirm(`Remove ${p.name}?`)) act("kick", { identity: p.identity }); }}
-                className="rounded px-1.5 py-0.5 text-[10px] text-red-300 hover:bg-red-500/20"
-              >
+              <button onClick={() => { if (confirm(`Remove ${p.name}?`)) act("kick", { identity: p.identity }); }} className="rounded px-1.5 py-0.5 text-[10px] text-[color:var(--danger)] hover:bg-[color:var(--danger)]/15">
                 Remove
               </button>
             </div>
@@ -261,9 +258,9 @@ function QATab({ roomId, identity, userName, isAdmin }: { roomId: string; identi
   return (
     <div className="flex h-full flex-col">
       <div className="flex-1 space-y-2 overflow-y-auto p-3 text-sm">
-        {sorted.length === 0 && <p className="py-12 text-center text-xs text-white/40">No questions yet.</p>}
+        {sorted.length === 0 && <p className="py-12 text-center text-xs text-[color:var(--text-muted)]">No questions yet.</p>}
         {sorted.map((q) => (
-          <div key={q.id} className="rounded-md border border-white/10 bg-white/5 p-3">
+          <div key={q.id} className="rounded-md border border-[color:var(--border)] bg-[color:var(--bg-sunken)]/50 p-3">
             <div className="flex items-start gap-2">
               <button
                 onClick={async () => {
@@ -274,17 +271,17 @@ function QATab({ roomId, identity, userName, isAdmin }: { roomId: string; identi
                   });
                   refresh();
                 }}
-                className="flex h-7 w-6 shrink-0 flex-col items-center justify-center rounded border border-white/10 hover:bg-white/10"
+                className="flex h-7 w-6 shrink-0 flex-col items-center justify-center rounded border border-[color:var(--border)] hover:bg-[color:var(--bg-elevated)]"
                 title="Upvote"
               >
-                <span className="text-[10px]">+</span>
-                <span className="text-[10px]">{q.upvotes}</span>
+                <span className="text-[10px] text-[color:var(--text-secondary)]">+</span>
+                <span className="text-[10px] text-[color:var(--text-secondary)]">{q.upvotes}</span>
               </button>
               <div className="min-w-0 flex-1">
-                <div className="text-[10px] text-white/40">{q.asker_name || q.asker}</div>
-                <div className="text-sm text-white/90">{q.question}</div>
+                <div className="text-[10px] text-[color:var(--text-muted)]">{q.asker_name || q.asker}</div>
+                <div className="text-sm text-[color:var(--text-primary)]">{q.question}</div>
                 {q.answer && (
-                  <div className="mt-1.5 rounded border border-white/10 bg-white/5 px-2 py-1 text-xs text-white/80">
+                  <div className="mt-1.5 rounded border border-[color:var(--border)] bg-[color:var(--bg-elevated)] px-2 py-1 text-xs text-[color:var(--text-secondary)]">
                     {q.answer}
                   </div>
                 )}
@@ -293,15 +290,15 @@ function QATab({ roomId, identity, userName, isAdmin }: { roomId: string; identi
           </div>
         ))}
       </div>
-      <div className="flex items-center gap-2 border-t border-white/10 p-2">
+      <div className="flex items-center gap-2 border-t border-[color:var(--border)] p-2">
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && ask()}
           placeholder="Ask a question..."
-          className="flex-1 rounded-md border border-white/10 bg-white/5 px-2.5 py-1.5 text-sm placeholder:text-white/40 focus:border-white/30 focus:outline-none"
+          className="flex-1 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-sunken)] px-2.5 py-1.5 text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--accent)] focus:outline-none"
         />
-        <button onClick={ask} className="rounded-md bg-white/10 px-3 py-1.5 text-xs hover:bg-white/20">Ask</button>
+        <button onClick={ask} className="rounded-md bg-[color:var(--accent)] px-3 py-1.5 text-xs text-white hover:bg-[color:var(--accent)]/90">Ask</button>
       </div>
     </div>
   );
@@ -345,7 +342,7 @@ function NotesTab({ roomId, identity, userName }: { roomId: string; identity: st
       value={body}
       onChange={(e) => setBody(e.target.value)}
       placeholder="Notes auto-save as you type. Markdown supported."
-      className="h-full w-full resize-none bg-[#0f0f14] p-4 text-sm text-white/90 placeholder:text-white/30 focus:outline-none"
+      className="h-full w-full resize-none bg-[color:var(--bg-sunken)] p-4 text-sm text-[color:var(--text-primary)] placeholder:text-[color:var(--text-muted)] focus:outline-none"
     />
   );
 }

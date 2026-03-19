@@ -11,6 +11,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,7 +57,7 @@ export default function LoginPage() {
       }
       router.push("/");
       router.refresh();
-    } catch (e) {
+    } catch {
       setError("Guest mode failed");
     } finally {
       setLoading(false);
@@ -64,90 +65,129 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0f] text-white">
-      <header className="border-b border-white/10">
+    <div className="relative min-h-screen bg-[color:var(--bg)] text-[color:var(--text-primary)] transition-colors duration-300">
+      <div className="aurora-bg" />
+
+      <header className="relative z-10 border-b border-[color:var(--border)] bg-[color:var(--bg-overlay)] backdrop-blur-md">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
           <Link href="/" className="flex items-center gap-2.5">
             <div
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold text-white"
-              style={{ background: "linear-gradient(135deg, var(--accent), #4f46e5)" }}
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold text-white shadow-sm"
+              style={{ background: "linear-gradient(135deg, var(--accent), var(--brand-700))" }}
             >
               IX
             </div>
-            <span className="text-sm font-semibold">Indux Meet</span>
+            <span className="text-sm font-semibold tracking-tight">Indux Meet</span>
+          </Link>
+          <Link
+            href="/signup"
+            className="rounded-md border border-[color:var(--border)] bg-[color:var(--bg)] px-3 py-1.5 text-sm text-[color:var(--text-secondary)] hover:bg-[color:var(--bg-elevated)] hover:text-[color:var(--text-primary)] transition-colors"
+          >
+            Create account
           </Link>
         </div>
       </header>
 
-      <main className="mx-auto max-w-md px-6 pt-20 pb-16">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">Welcome back</h1>
-          <p className="mt-2 text-sm text-white/60">Sign in to start or join meetings</p>
-        </div>
-
-        <form onSubmit={submit} className="mt-8 space-y-4">
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-white/70">Email</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              autoFocus
-              required
-              className="w-full rounded-lg border border-white/10 bg-[#15151b] px-3.5 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-white/10"
-            />
-          </div>
-          <div>
-            <label className="mb-1.5 block text-xs font-medium text-white/70">Password</label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Your password"
-              required
-              className="w-full rounded-lg border border-white/10 bg-[#15151b] px-3.5 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none focus:ring-2 focus:ring-white/10"
-            />
-          </div>
-
-          {error && (
-            <div className="flex items-center gap-2 rounded-lg border border-red-700/50 bg-red-900/20 px-3 py-2 text-xs text-red-200">
-              <Icon.Alert size={14} />
-              {error}
+      <main className="relative z-10 mx-auto max-w-lg px-6 pt-16 pb-24">
+        <div className="animate-fadeIn">
+          <div className="mb-8 text-center">
+            <div
+              className="mx-auto mb-5 grid h-14 w-14 place-items-center rounded-2xl text-lg font-bold text-white shadow-lg"
+              style={{ background: "linear-gradient(135deg, var(--accent), var(--brand-600))" }}
+            >
+              IX
             </div>
-          )}
+            <h1 className="text-3xl font-semibold tracking-tight">Welcome back</h1>
+            <p className="mt-2 text-sm text-[color:var(--text-secondary)]">
+              Sign in to start or join meetings
+            </p>
+          </div>
+
+          <form onSubmit={submit} className="space-y-4">
+            <div className="animate-fadeIn stagger-1">
+              <label className="mb-1.5 block text-xs font-medium text-[color:var(--text-secondary)]">Email</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@example.com"
+                autoFocus
+                required
+                className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-elevated)] px-3.5 py-2.5 text-sm placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]/15 transition-all"
+              />
+            </div>
+            <div className="animate-fadeIn stagger-2">
+              <label className="mb-1.5 block text-xs font-medium text-[color:var(--text-secondary)]">Password</label>
+              <div className="relative">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Your password"
+                  required
+                  className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-elevated)] px-3.5 py-2.5 pr-10 text-sm placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]/15 transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 rounded p-1 text-[color:var(--text-muted)] hover:text-[color:var(--text-secondary)] transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <Icon.EyeOff size={14} /> : <Icon.Eye size={14} />}
+                </button>
+              </div>
+            </div>
+
+            {error && (
+              <div className="animate-scaleIn flex items-center gap-2 rounded-lg border border-[color:danger]/30 bg-[color:danger]/10 px-3 py-2.5 text-xs text-[color:danger]">
+                <Icon.Alert size={14} />
+                {error}
+              </div>
+            )}
+
+            <button
+              type="submit"
+              disabled={loading || !email || !password}
+              className="btn-primary flex w-full items-center justify-center gap-2 disabled:opacity-40"
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Signing in...
+                </span>
+              ) : (
+                <>
+                  Sign in
+                  <Icon.Arrow size={14} />
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="my-6 flex items-center gap-3">
+            <div className="h-px flex-1 bg-[color:var(--border)]" />
+            <span className="text-xs font-medium text-[color:var(--text-muted)]">OR</span>
+            <div className="h-px flex-1 bg-[color:var(--border)]" />
+          </div>
 
           <button
-            type="submit"
-            disabled={loading || !email || !password}
-            className="flex w-full items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold text-white transition-all hover:opacity-90 disabled:opacity-40"
-            style={{ background: "var(--accent)" }}
+            onClick={guest}
+            disabled={loading}
+            className="btn-outline flex w-full items-center justify-center gap-2 disabled:opacity-40"
           >
-            {loading ? "Signing in..." : "Sign in"}
-            {!loading && <Icon.Arrow size={14} />}
+            <Icon.Users size={14} />
+            Try as Guest
           </button>
-        </form>
 
-        <div className="mt-5 flex items-center gap-3">
-          <div className="h-px flex-1 bg-white/10" />
-          <span className="text-xs text-white/40">OR</span>
-          <div className="h-px flex-1 bg-white/10" />
+          <div className="mt-8 animate-fadeIn stagger-3 text-center">
+            <p className="text-sm text-[color:var(--text-secondary)]">
+              New to Indux?{" "}
+              <Link href="/signup" className="font-medium text-[color:var(--accent)] hover:underline transition-colors">
+                Create an account
+              </Link>
+            </p>
+          </div>
         </div>
-
-        <button
-          onClick={guest}
-          disabled={loading}
-          className="mt-5 w-full rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm font-medium text-white hover:bg-white/10 disabled:opacity-40"
-        >
-          Try as Guest
-        </button>
-
-        <p className="mt-8 text-center text-sm text-white/60">
-          New to Indux?{" "}
-          <Link href="/signup" className="font-medium text-white hover:underline">
-            Create an account
-          </Link>
-        </p>
       </main>
     </div>
   );

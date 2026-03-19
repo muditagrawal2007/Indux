@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useLocalParticipant, useConnectionState } from "@livekit/components-react";
-import { ConnectionState as LKState } from "livekit-client";
+import { ConnectionState as LKState, Track } from "livekit-client";
 
 type Quality = "auto" | "low" | "medium" | "high" | "audio-only";
 
@@ -10,15 +10,13 @@ export function QualityControl() {
   const [quality, setQuality] = useState<Quality>("auto");
   const { localParticipant } = useLocalParticipant();
   const connState = useConnectionState();
-  const [autoMode, setAutoMode] = useState(true);
+  const [open, setOpen] = useState(false);
 
-  // Apply quality settings to the local video track
   useEffect(() => {
     if (!localParticipant) return;
-    const track = localParticipant.getTrackPublication()?.videoTrack;
+    const track = localParticipant.getTrackPublication(Track.Source.Camera as any)?.videoTrack;
     if (!track) return;
 
-    // Map connection state -> quality
     const effective: Exclude<Quality, "auto"> =
       quality === "auto"
         ? (connState === LKState.Connected
@@ -30,17 +28,15 @@ export function QualityControl() {
             : "audio-only")
         : quality;
 
-    // Set simulcast layers
     const layers =
       effective === "audio-only" ? [] :
       effective === "low" ? ["q"] :
       effective === "medium" ? ["q", "h"] :
-      ["q", "h", "f"]; // high: all layers
+      ["q", "h", "f"];
 
     try {
       (track as any).setPublishingLayers?.(layers);
       (track as any).setPublishingQuality?.(effective);
-      // Mute video entirely for audio-only
       if (effective === "audio-only") {
         track.mute();
       } else {
@@ -54,50 +50,49 @@ export function QualityControl() {
   const isLowQuality = connState === LKState.Reconnecting || connState === LKState.Disconnected;
   const qualityLabel =
     quality === "auto"
-      ? `Auto (${connState === LKState.Connected ? "HD" : isLowQuality ? "low" : "SD"})`
-      : quality === "audio-only" ? "Audio only"
-      : quality === "low" ? "Low (180p)"
-      : quality === "medium" ? "SD (360p)"
-      : "HD (720p)";
+      ? `Auto ${connState === LKState.Connected ? "HD" : isLowQuality ? "Low" : "SD"}`
+      : quality === "audio-only" ? "Audio"
+      : quality === "low" ? "180p"
+      : quality === "medium" ? "360p"
+      : "720p";
 
   return (
     <div className="relative">
       <button
-        onClick={() => setAutoMode((v) => !v)}
+        onClick={() => setOpen((v) => !v)}
         title="Click to change quality"
         className={
-          "rounded-md px-2.5 py-1 text-xs " +
+          "flex items-center gap-1 rounded-lg bg-black/50 px-2 py-1 text-[10px] backdrop-blur-sm transition-colors " +
           (quality === "audio-only" || isLowQuality
-            ? "bg-yellow-900/40 text-yellow-300 border border-yellow-700"
-            : "border border-gray-700 bg-gray-800 text-gray-200 hover:bg-gray-700")
+            ? "text-amber-400 hover:bg-amber-500/10"
+            : "text-white/50 hover:bg-black/70 hover:text-white/70")
         }
       >
         {qualityLabel}
       </button>
-      {autoMode && (
-        <div className="absolute bottom-full right-0 mb-1 w-48 rounded-lg border border-gray-700 bg-gray-950 p-2 text-xs shadow-xl">
-          <div className="mb-1 px-1 text-[10px] uppercase tracking-wide text-gray-500">Quality</div>
+      {open && (
+        <div className="absolute bottom-full right-0 mb-2 w-48 rounded-xl border border-white/10 bg-[#1a1a24]/95 p-2 text-xs shadow-2xl backdrop-blur-xl">
+          <div className="mb-1 px-2 text-[10px] uppercase tracking-wide text-white/30">Quality</div>
           {(["auto", "high", "medium", "low", "audio-only"] as Quality[]).map((q) => (
             <button
               key={q}
               onClick={() => {
                 setQuality(q);
-                setAutoMode(false);
-                if (q === "auto") setAutoMode(true);
+                setOpen(false);
               }}
               className={
-                "block w-full rounded px-2 py-1 text-left hover:bg-gray-800 " +
-                (quality === q ? "bg-gray-800 text-white" : "text-gray-300")
+                "block w-full rounded-lg px-2 py-1.5 text-left transition-colors " +
+                (quality === q ? "bg-white/10 text-white" : "text-white/50 hover:bg-white/5 hover:text-white/70")
               }
             >
               {q === "auto" ? "Auto (recommended)" :
-               q === "audio-only" ? "Audio only (lowest)" :
+               q === "audio-only" ? "Audio only" :
                q === "low" ? "Low — 180p" :
                q === "medium" ? "SD — 360p" :
                "HD — 720p"}
             </button>
           ))}
-          <p className="mt-1 border-t border-gray-800 px-1 pt-1 text-[10px] text-gray-500">
+          <p className="mt-1 border-t border-white/5 px-2 pt-1 text-[10px] text-white/25">
             Auto-adjusts to your network
           </p>
         </div>

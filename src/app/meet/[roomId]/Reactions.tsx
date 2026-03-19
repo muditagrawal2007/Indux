@@ -1,21 +1,21 @@
 "use client";
 
-// Zoom-style reactions — emoji float up from the bottom,
+// Zoom-style reactions — SVG icons float up from the bottom,
 // mini celebration animations for applause/thumbs etc.
-// All emoji-free UI labels, but reactions themselves use standard emoji
-// (because emoji IS the universal standard for reactions — no icon replacement)
+// All emoji-free — uses standard SVG icons
 
 import { useEffect, useState, useRef } from "react";
+import { Reaction } from "../../components/Icons";
 
 export type ReactionKind = "thumbs" | "clap" | "heart" | "laugh" | "raise" | "wave" | "fire" | "party";
 
-const REACTIONS: { kind: ReactionKind; emoji: string; label: string; color: string }[] = [
-  { kind: "thumbs", emoji: "👍", label: "Thumbs up", color: "#3b82f6" },
-  { kind: "clap", emoji: "👏", label: "Clap", color: "#10b981" },
-  { kind: "heart", emoji: "❤", label: "Love", color: "#ef4444" },
-  { kind: "laugh", emoji: "😂", label: "Laugh", color: "#f59e0b" },
-  { kind: "fire", emoji: "🔥", label: "Fire", color: "#f97316" },
-  { kind: "party", emoji: "🎉", label: "Celebrate", color: "#a855f7" },
+const REACTIONS: { kind: ReactionKind; label: string; color: string }[] = [
+  { kind: "thumbs", label: "Thumbs up", color: "#3b82f6" },
+  { kind: "clap", label: "Clap", color: "#10b981" },
+  { kind: "heart", label: "Love", color: "#ef4444" },
+  { kind: "laugh", label: "Laugh", color: "#f59e0b" },
+  { kind: "fire", label: "Fire", color: "#f97316" },
+  { kind: "party", label: "Celebrate", color: "#a855f7" },
 ];
 
 export function ReactionsMenu({ onPick, side = "top" }: { onPick: (kind: ReactionKind) => void; side?: "top" | "bottom" }) {
@@ -33,9 +33,9 @@ export function ReactionsMenu({ onPick, side = "top" }: { onPick: (kind: Reactio
               key={r.kind}
               onClick={() => onPick(r.kind)}
               title={r.label}
-              className="group flex h-11 w-11 items-center justify-center rounded-xl text-2xl transition-all hover:scale-125 hover:bg-white/10"
+              className="group flex h-11 w-11 items-center justify-center rounded-xl text-white/70 transition-all hover:scale-125 hover:bg-white/10 hover:text-white"
             >
-              {r.emoji}
+              <Reaction kind={r.kind as "thumbs" | "clap" | "heart" | "laugh" | "fire" | "party"} />
             </button>
           ))}
         </div>
@@ -46,7 +46,7 @@ export function ReactionsMenu({ onPick, side = "top" }: { onPick: (kind: Reactio
 
 // Floating reaction particles
 export function FloatingReactions({ roomId, identity }: { roomId: string; identity: string }) {
-  const [reactions, setReactions] = useState<{ id: string; emoji: string; ts: number; x: number }[]>([]);
+  const [reactions, setReactions] = useState<{ id: string; kind: string; label: string; color: string; ts: number; x: number }[]>([]);
   const idRef = useRef(0);
 
   // Poll for reactions
@@ -61,13 +61,18 @@ export function FloatingReactions({ roomId, identity }: { roomId: string; identi
           setReactions((prev) => {
             const fresh = prev.filter((x) => now - x.ts < 4000);
             const newOnes = (data.reactions ?? [])
-              .filter((x: any) => now - x.ts < 2000 && x.identity !== identity) // not own
-              .map((x: any) => ({
-                id: `r${idRef.current++}`,
-                emoji: REACTIONS.find((r) => r.kind === x.emoji)?.emoji ?? "👍",
-                ts: x.ts,
-                x: Math.random() * 60 + 20, // 20% - 80% horizontal position
-              }));
+              .filter((x: any) => now - x.ts < 2000 && x.identity !== identity)
+              .map((x: any) => {
+                const match = REACTIONS.find((r) => r.kind === x.emoji);
+                return {
+                  id: `r${idRef.current++}`,
+                  kind: x.emoji,
+                  label: match?.label ?? x.emoji,
+                  color: match?.color ?? "#6b7280",
+                  ts: x.ts,
+                  x: Math.random() * 60 + 20,
+                };
+              });
             return [...fresh, ...newOnes];
           });
         }
@@ -81,13 +86,17 @@ export function FloatingReactions({ roomId, identity }: { roomId: string; identi
       {reactions.map((r) => (
         <div
           key={r.id}
-          className="absolute bottom-16 text-3xl"
+          className="absolute bottom-16 flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium shadow-lg backdrop-blur"
           style={{
             left: `${r.x}%`,
+            background: `${r.color}22`,
+            color: r.color,
+            border: `1px solid ${r.color}33`,
             animation: "reaction-float 3.5s ease-out forwards",
           }}
         >
-          {r.emoji}
+          <Reaction kind={r.kind as "thumbs" | "clap" | "heart" | "laugh" | "fire" | "party"} />
+          <span>{r.label}</span>
         </div>
       ))}
       <style jsx>{`
@@ -114,27 +123,30 @@ export function MessageReactions({ messageId, roomId, identity, reactions }: { m
 
   return (
     <div className="flex items-center gap-1 text-xs">
-      {Object.entries(summary).map(([emoji, count]) => (
-        <button
-          key={emoji}
-          onClick={async () => {
-            await fetch(`/api/rooms/${roomId}/chat/${messageId}/reactions`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ identity, emoji }),
-            });
-          }}
-          className={
-            "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] " +
-            (myReaction?.endsWith(emoji)
-              ? "border-blue-500 bg-blue-500/15 text-blue-300"
-              : "border-white/10 bg-white/5 text-white/60 hover:bg-white/10")
-          }
-        >
-          <span>{emoji}</span>
-          <span>{count}</span>
-        </button>
-      ))}
+      {Object.entries(summary).map(([emoji, count]) => {
+        const match = REACTIONS.find((r) => r.kind === emoji);
+        return (
+          <button
+            key={emoji}
+            onClick={async () => {
+              await fetch(`/api/rooms/${roomId}/chat/${messageId}/reactions`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ identity, emoji }),
+              });
+            }}
+            className={
+              "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] " +
+              (myReaction?.endsWith(emoji)
+                ? "border-blue-500 bg-blue-500/15 text-blue-300"
+                : "border-white/10 bg-white/5 text-white/60 hover:bg-white/10")
+            }
+          >
+            <span className="inline-flex">{match && <Reaction kind={emoji as "thumbs" | "clap" | "heart" | "laugh" | "fire" | "party"} />}</span>
+            <span>{count}</span>
+          </button>
+        );
+      })}
     </div>
   );
 }

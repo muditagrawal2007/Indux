@@ -84,7 +84,7 @@ export async function POST(
       let count = 0;
       for (const p of all) {
         for (const t of p.tracks ?? []) {
-          if (t.type === "AUDIO" && !t.muted) {
+          if ((t.type as unknown as string) === "AUDIO" && !t.muted) {
             await svc.mutePublishedTrack(room, p.identity, t.sid, true);
             count++;
           }
@@ -100,9 +100,9 @@ export async function POST(
     switch (action) {
       case "mute": {
         try {
-          const p = await svc.getParticipant(room, identity);
+           const p = await svc.getParticipant(room, identity);
           for (const t of p.tracks ?? []) {
-            if (t.type === "AUDIO" && !t.muted) {
+          if ((t.type as unknown as string) === "AUDIO" && !t.muted) {
               await svc.mutePublishedTrack(room, identity, t.sid, true);
             }
           }
@@ -131,26 +131,18 @@ export async function POST(
         return NextResponse.json({ ok: true, action, identity });
 
       case "promote":
-        await svc.updateParticipant(room, identity, {
-          permission: {
+        await svc.updateParticipant(room, identity, undefined, {
             canPublish: true,
             canSubscribe: true,
             canPublishData: true,
-            roomAdmin: true,
-            roomCreate: true,
-          },
         });
         return NextResponse.json({ ok: true, action, identity });
 
       case "demote":
-        await svc.updateParticipant(room, identity, {
-          permission: {
+        await svc.updateParticipant(room, identity, undefined, {
             canPublish: true,
             canSubscribe: true,
             canPublishData: true,
-            roomAdmin: false,
-            roomCreate: false,
-          },
         });
         return NextResponse.json({ ok: true, action, identity });
 

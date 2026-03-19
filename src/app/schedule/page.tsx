@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Icon } from "../components/Icons";
 
 type Scheduled = {
   id: string;
@@ -62,119 +64,165 @@ export default function SchedulePage() {
     refresh();
   }
 
+  const now = Date.now();
+
   return (
-    <div className="min-h-screen bg-white text-gray-900 dark:bg-gray-950 dark:text-gray-100">
-      <header className="border-b border-gray-200/60 dark:border-gray-800/60">
+    <div className="min-h-screen bg-[color:var(--bg)] text-[color:var(--text-primary)] transition-colors duration-200">
+      <header className="sticky top-0 z-30 border-b border-[color:var(--border)] bg-[color:var(--bg-overlay)] backdrop-blur-md">
         <div className="mx-auto flex h-14 max-w-3xl items-center justify-between px-6">
-          <button onClick={() => router.push("/")} className="text-sm text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white">
-            ← Back
-          </button>
+          <Link href="/" className="flex items-center gap-2 text-sm text-[color:var(--text-secondary)] hover:text-[color:var(--text-primary)] transition-colors">
+            <Icon.Arrow size={14} />
+            Back
+          </Link>
           <h1 className="text-sm font-semibold">Schedule a meeting</h1>
           <div className="w-12" />
         </div>
       </header>
-      <main className="mx-auto max-w-3xl px-6 py-10">
-        <div className="rounded-xl border border-gray-200 bg-white/80 p-6 dark:border-gray-800 dark:bg-gray-900/60">
-          <h2 className="text-lg font-semibold">New meeting</h2>
-          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <label className="block sm:col-span-2">
-              <span className="text-xs text-gray-500 dark:text-gray-400">Title</span>
-              <input
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="Q3 product review"
-                className="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950"
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs text-gray-500 dark:text-gray-400">Start time</span>
-              <input
-                type="datetime-local"
-                value={startsAt}
-                onChange={(e) => setStartsAt(e.target.value)}
-                className="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950"
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs text-gray-500 dark:text-gray-400">Duration (min)</span>
-              <input
-                type="number"
-                value={duration}
-                onChange={(e) => setDuration(Number(e.target.value))}
-                min={5}
-                className="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950"
-              />
-            </label>
-            <label className="block">
-              <span className="text-xs text-gray-500 dark:text-gray-400">Recurring</span>
-              <select
-                value={recurring}
-                onChange={(e) => setRecurring(e.target.value as "none" | "daily" | "weekly" | "monthly")}
-                className="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950"
-              >
-                <option value="none">One time</option>
-                <option value="daily">Daily</option>
-                <option value="weekly">Weekly</option>
-                <option value="monthly">Monthly</option>
-              </select>
-            </label>
-            <label className="block">
-              <span className="text-xs text-gray-500 dark:text-gray-400">Host email</span>
-              <input
-                value={host}
-                onChange={(e) => setHost(e.target.value)}
-                className="mt-1 w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm dark:border-gray-700 dark:bg-gray-950"
-              />
-            </label>
+
+      <main className="mx-auto max-w-3xl px-6 py-10 space-y-8">
+        <div className="animate-fadeIn">
+          <div className="rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg)] p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[color:var(--accent)]/10 text-[color:var(--accent)]">
+                <Icon.Calendar size={18} />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold">New meeting</h2>
+                <p className="text-xs text-[color:var(--text-secondary)]">Set up a meeting for later</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <label className="block sm:col-span-2">
+                <span className="mb-1 block text-xs font-medium text-[color:var(--text-secondary)]">Title</span>
+                <input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Q3 product review"
+                  className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-elevated)] px-3.5 py-2.5 text-sm placeholder:text-[color:var(--text-muted)] focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]/15 transition-all"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-[color:var(--text-secondary)]">Start time</span>
+                <input
+                  type="datetime-local"
+                  value={startsAt}
+                  onChange={(e) => setStartsAt(e.target.value)}
+                  className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-elevated)] px-3.5 py-2.5 text-sm focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]/15 transition-all"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-[color:var(--text-secondary)]">Duration (min)</span>
+                <input
+                  type="number"
+                  value={duration}
+                  onChange={(e) => setDuration(Number(e.target.value))}
+                  min={5}
+                  className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-elevated)] px-3.5 py-2.5 text-sm focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]/15 transition-all"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-[color:var(--text-secondary)]">Recurring</span>
+                <select
+                  value={recurring}
+                  onChange={(e) => setRecurring(e.target.value as "none" | "daily" | "weekly" | "monthly")}
+                  className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-elevated)] px-3.5 py-2.5 text-sm focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]/15 transition-all"
+                >
+                  <option value="none">One time</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-[color:var(--text-secondary)]">Host email</span>
+                <input
+                  value={host}
+                  onChange={(e) => setHost(e.target.value)}
+                  className="w-full rounded-lg border border-[color:var(--border)] bg-[color:var(--bg-elevated)] px-3.5 py-2.5 text-sm focus:border-[color:var(--accent)] focus:outline-none focus:ring-2 focus:ring-[color:var(--accent)]/15 transition-all"
+                />
+              </label>
+            </div>
+
+            <button
+              onClick={create}
+              disabled={busy || !title}
+              className="btn-primary mt-5 w-full disabled:opacity-40"
+            >
+              {busy ? "Scheduling..." : "Schedule meeting"}
+            </button>
           </div>
-          <button
-            onClick={create}
-            disabled={busy}
-            className="mt-4 w-full rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-800 disabled:opacity-50 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-100"
-          >
-            Schedule
-          </button>
         </div>
 
-        <h2 className="mt-10 text-sm font-medium">Upcoming for {host}</h2>
-        <ul className="mt-3 space-y-2">
-          {list.length === 0 && (
-            <li className="text-xs text-gray-500 dark:text-gray-400">No meetings scheduled.</li>
-          )}
-          {list.map((m) => (
-            <li
-              key={m.id}
-              className="flex items-center justify-between rounded-lg border border-gray-200 bg-white/80 px-4 py-3 dark:border-gray-800 dark:bg-gray-900/60"
-            >
-              <div>
-                <div className="text-sm font-medium">{m.title}</div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {new Date(m.starts_at).toLocaleString()} · {m.duration_min} min · {m.recurring}
+        <div className="animate-fadeIn stagger-1">
+          <h2 className="mb-3 text-sm font-medium">Upcoming for {host}</h2>
+          <div className="space-y-2">
+            {list.length === 0 && (
+              <div className="rounded-xl border border-dashed border-[color:var(--border)] bg-[color:var(--bg-elevated)] p-8 text-center">
+                <Icon.Calendar size={24} className="mx-auto mb-2 text-[color:var(--text-muted)]" />
+                <p className="text-sm text-[color:var(--text-secondary)]">No meetings scheduled yet.</p>
+                <p className="mt-1 text-xs text-[color:var(--text-muted)]">Create one above to get started.</p>
+              </div>
+            )}
+            {list.map((m) => {
+              const isPast = m.starts_at + m.duration_min * 60000 < now;
+              const timeDiff = m.starts_at - now;
+              const isSoon = timeDiff > 0 && timeDiff < 30 * 60 * 1000;
+              return (
+                <div
+                  key={m.id}
+                  className="group flex items-center justify-between rounded-xl border border-[color:var(--border)] bg-[color:var(--bg)] px-4 py-3 transition-all duration-200 hover:border-[color:var(--accent)]/20 hover:bg-[color:var(--bg-elevated)]"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                      isPast ? "bg-[color:var(--bg-sunken)] text-[color:var(--text-muted)]" :
+                      isSoon ? "bg-[color:warning]/10 text-[color:warning]" :
+                      "bg-[color:var(--accent)]/10 text-[color:var(--accent)]"
+                    }`}>
+                      <Icon.Calendar size={16} />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{m.title}</div>
+                      <div className="flex items-center gap-1.5 text-xs text-[color:var(--text-tertiary)]">
+                        <span>{new Date(m.starts_at).toLocaleString([], { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                        <span>·</span>
+                        <span>{m.duration_min} min</span>
+                        {m.recurring !== "none" && (
+                          <>
+                            <span>·</span>
+                            <span className="capitalize">{m.recurring}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <a
+                      href={`/api/calendar/${m.id}.ics`}
+                      className="btn-ghost !px-2 !py-1 !text-[11px] !gap-1"
+                      title="Download .ics"
+                    >
+                      <Icon.Calendar size={12} />
+                      .ics
+                    </a>
+                    <a
+                      href={`/meet/${m.room}`}
+                      className="btn-primary !px-3 !py-1 !text-[11px] !rounded-md"
+                    >
+                      Join
+                    </a>
+                    <button
+                      onClick={() => cancel(m.id)}
+                      className="btn-ghost !px-2 !py-1 !text-[11px] !text-[color:danger] hover:!bg-[color:danger]/10"
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <a
-                  href={`/api/calendar/${m.id}.ics`}
-                  className="rounded border border-gray-300 px-2 py-1 text-[11px] hover:bg-gray-50 dark:border-gray-700 dark:hover:bg-gray-800"
-                >
-                  .ics
-                </a>
-                <a
-                  href={`/meet/${m.room}`}
-                  className="rounded bg-gray-900 px-2 py-1 text-[11px] text-white hover:bg-gray-800 dark:bg-white dark:text-gray-900"
-                >
-                  Join
-                </a>
-                <button
-                  onClick={() => cancel(m.id)}
-                  className="rounded border border-red-300 px-2 py-1 text-[11px] text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-300"
-                >
-                  Cancel
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+              );
+            })}
+          </div>
+        </div>
       </main>
     </div>
   );

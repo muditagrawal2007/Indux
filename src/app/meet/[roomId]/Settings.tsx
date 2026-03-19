@@ -48,7 +48,7 @@ const LABELS: Record<keyof Settings, { label: string; desc: string; type?: "pass
   muteOnJoin: { label: "Mute on join", desc: "Participants join with mic muted" },
   allowScreenShare: { label: "Screen share", desc: "Let participants share their screen" },
   allowChat: { label: "In-room chat", desc: "Text chat during the meeting" },
-  allowReactions: { label: "Reactions", desc: "Thumbs Clap  Laugh emoji reactions" },
+  allowReactions: { label: "Reactions", desc: "Thumbs, Clap, Love, Laugh, Fire, Celebrate" },
   allowHandRaise: { label: "Raise hand", desc: "Participants can raise hand" },
   allowPolls: { label: "Polls", desc: "Live polls for audience input" },
   allowWhiteboard: { label: "Whiteboard", desc: "Collaborative drawing canvas" },

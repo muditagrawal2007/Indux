@@ -2,7 +2,6 @@
 
 import { Icon } from "../../components/Icons";
 
-// Tile view vs stage view toggle
 export function ViewToggle({
   view, onViewChange,
 }: {
@@ -10,13 +9,13 @@ export function ViewToggle({
   onViewChange: (v: "tile" | "stage") => void;
 }) {
   return (
-    <div className="flex items-center gap-1 rounded-md border border-white/10 bg-white/5 p-0.5">
+    <div className="flex items-center gap-0.5 rounded-lg bg-black/50 p-0.5 backdrop-blur-sm">
       <button
         onClick={() => onViewChange("tile")}
         title="Tile view"
         className={
-          "flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors " +
-          (view === "tile" ? "bg-white/10 text-white" : "text-white/50 hover:text-white")
+          "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-all duration-150 " +
+          (view === "tile" ? "bg-white/15 text-white" : "text-white/40 hover:text-white/70 hover:bg-white/5")
         }
       >
         <Icon.Grid size={12} />
@@ -26,8 +25,8 @@ export function ViewToggle({
         onClick={() => onViewChange("stage")}
         title="Stage view"
         className={
-          "flex items-center gap-1.5 rounded px-2 py-1 text-xs transition-colors " +
-          (view === "stage" ? "bg-white/10 text-white" : "text-white/50 hover:text-white")
+          "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-[11px] font-medium transition-all duration-150 " +
+          (view === "stage" ? "bg-white/15 text-white" : "text-white/40 hover:text-white/70 hover:bg-white/5")
         }
       >
         <Icon.Maximize size={12} />

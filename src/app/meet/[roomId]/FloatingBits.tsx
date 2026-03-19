@@ -1,62 +1,9 @@
 "use client";
 
-// Floating reactions and Share modal — uses standard SVG icons (no emoji)
+// Share modal — uses standard SVG icons (no emoji)
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Icon } from "../../components/Icons";
-
-// Floating reactions — text labels (no emoji)
-export function FloatingReactions({ roomId }: { roomId: string }) {
-  const [reactions, setReactions] = useState<any[]>([]);
-  useEffect(() => {
-    const t = setInterval(async () => {
-      try {
-        const r = await fetch(`/api/rooms/${roomId}/reactions`);
-        if (r.ok) {
-          const data = await r.json();
-          const now = Date.now();
-          setReactions((prev) => {
-            const fresh = prev.filter((x) => now - x.ts < 4000);
-            return [...fresh, ...(data.reactions ?? []).filter((x: any) => now - x.ts < 4000)];
-          });
-        }
-      } catch {}
-    }, 2000);
-    return () => clearInterval(t);
-  }, [roomId]);
-
-  // Render reactions as text labels (no emoji)
-  const labelMap: Record<string, string> = {
-    thumbs: "Thumbs up",
-    clap: "Clap",
-    heart: "Love",
-    laugh: "Laugh",
-  };
-
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {reactions.map((r, i) => (
-        <div
-          key={i}
-          className="absolute bottom-20 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white shadow-lg backdrop-blur"
-          style={{
-            left: `${10 + (i * 7) % 80}%`,
-            animation: `float-up 3s ease-out forwards`,
-          }}
-        >
-          {labelMap[r.emoji] || r.emoji}
-        </div>
-      ))}
-      <style jsx>{`
-        @keyframes float-up {
-          0% { opacity: 0; transform: translateY(0); }
-          20% { opacity: 1; }
-          100% { opacity: 0; transform: translateY(-200px); }
-        }
-      `}</style>
-    </div>
-  );
-}
 
 // Share modal — uses standard SVG icons
 export function ShareModal({ roomId, onClose }: { roomId: string; onClose: () => void }) {

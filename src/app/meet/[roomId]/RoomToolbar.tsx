@@ -1,12 +1,11 @@
 "use client";
 
-// Zoom-style bottom toolbar
-// Round buttons with text labels
-// Mute=red when muted, Stop Video=red when cam off (Zoom signature)
+// Floating pill toolbar — bottom-center, dark glass
+// Matches Zoom/Google Meet/LiveKit Meet patterns
 
 import { useRef } from "react";
 import { useLocalParticipant } from "@livekit/components-react";
-import { Icon } from "../../components/Icons";
+import { Icon, Reaction } from "../../components/Icons";
 
 type Tab = "chat" | "people" | "qa" | "notes" | null;
 
@@ -24,6 +23,7 @@ type Props = {
   onTranscript: () => void;
   onSettings: () => void;
   onLeave: () => void;
+  canPublish?: boolean;
 };
 
 export function RoomToolbar({
@@ -42,8 +42,7 @@ export function RoomToolbar({
       const next = !micOn;
       setMicOn(next);
       await localParticipant.setMicrophoneEnabled(next);
-    } catch (e) {
-      // Permission denied — revert UI state
+    } catch {
       setMicOn(!micOn);
     }
   }
@@ -54,7 +53,7 @@ export function RoomToolbar({
       const next = !camOn;
       setCamOn(next);
       await localParticipant.setCameraEnabled(next);
-    } catch (e) {
+    } catch {
       setCamOn(!camOn);
     }
   }
@@ -77,144 +76,140 @@ export function RoomToolbar({
   }
 
   return (
-    <footer className="border-t border-black/30 bg-[#0a0a0f] px-4 py-2.5">
-      <div className="mx-auto flex max-w-5xl items-center justify-between gap-3">
-        {/* Left: room info */}
-        <div className="flex items-center gap-2 text-sm text-white/60">
-          <span className="font-mono text-xs">/{roomId}</span>
+    <div className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 sm:bottom-5">
+      {/* Status badges above toolbar */}
+      {(recording || !canPublish) && (
+        <div className="mb-2 flex justify-center gap-2">
           {recording && (
-            <span className="flex items-center gap-1.5 rounded bg-red-500/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-red-300">
+            <span className="animate-bounceIn flex items-center gap-1.5 rounded-full bg-red-500/15 px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-red-400 backdrop-blur-md">
               <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-red-400" />
-              Recording
+              REC
             </span>
           )}
           {!canPublish && (
-            <span className="flex items-center gap-1.5 rounded bg-yellow-500/15 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-yellow-300">
+            <span className="animate-bounceIn flex items-center gap-1.5 rounded-full bg-amber-500/15 px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-amber-400 backdrop-blur-md">
               <Icon.Lock size={10} />
               Waiting for host
             </span>
           )}
         </div>
+      )}
 
-        {/* Center: Zoom-style round buttons */}
-        <div className="flex items-center gap-1.5">
-          <ZoomButton
-            active={micOn}
-            activeIcon={<Icon.Mic size={18} />}
-            inactiveIcon={<Icon.MicOff size={18} />}
-            onClick={toggleMic}
-            labelActive="Mute"
-            labelInactive="Unmute"
-          />
-          <ZoomButton
-            active={camOn}
-            activeIcon={<Icon.Video size={18} />}
-            inactiveIcon={<Icon.VideoOff size={18} />}
-            onClick={toggleCam}
-            labelActive="Stop Video"
-            labelInactive="Start Video"
-          />
-          <ZoomButton
-            active
-            activeIcon={<Icon.ScreenShare size={18} />}
-            onClick={onShare}
-            labelActive="Share"
-            alwaysActive
-          />
-          <ZoomButton
-            active
-            activeIcon={<Icon.MessageSquare size={18} />}
-            onClick={() => onTab(activeTab === "chat" ? null : "chat")}
-            labelActive="Chat"
-            highlight={activeTab === "chat"}
-          />
-          <ZoomButton
-            active
-            activeIcon={<Icon.Users size={18} />}
-            onClick={() => onTab(activeTab === "people" ? null : "people")}
-            labelActive="Participants"
-            highlight={activeTab === "people"}
-          />
-          <ZoomButton
-            active
-            activeIcon={<Icon.BarChart size={18} />}
-            onClick={() => onTab(activeTab === "qa" ? null : "qa")}
-            labelActive="Polls"
-            highlight={activeTab === "qa"}
-          />
+      {/* Main floating pill */}
+      <div className="flex items-center gap-0.5 rounded-full bg-[#1a1a24]/90 px-2 py-1.5 shadow-2xl shadow-black/50 backdrop-blur-xl border border-white/10">
+        {/* Core controls */}
+        <PillButton
+          active={micOn}
+          activeIcon={<Icon.Mic size={18} />}
+          inactiveIcon={<Icon.MicOff size={18} />}
+          onClick={toggleMic}
+          label={micOn ? "Mute" : "Unmute"}
+        />
+        <PillButton
+          active={camOn}
+          activeIcon={<Icon.Video size={18} />}
+          inactiveIcon={<Icon.VideoOff size={18} />}
+          onClick={toggleCam}
+          label={camOn ? "Stop Video" : "Start Video"}
+        />
 
-          {/* Reactions menu */}
-          <div className="relative">
-            <ZoomButton
-              active
-              activeIcon={<span className="text-base">😀</span>}
-              onClick={() => setReactionsOpen((v) => !v)}
-              labelActive="React"
-              alwaysActive
-            />
-            {reactionsOpen && (
-              <div
-                className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-2xl border border-white/10 bg-[#1a1a25] p-1.5 shadow-2xl"
-                onMouseLeave={() => setReactionsOpen(false)}
-              >
-                <div className="flex gap-0.5">
-                  {[{ e: "thumbs", icon: "👍" }, { e: "clap", icon: "👏" }, { e: "heart", icon: "❤" }, { e: "laugh", icon: "😂" }, { e: "fire", icon: "🔥" }, { e: "party", icon: "🎉" }].map((r) => (
-                    <button
-                      key={r.e}
-                      onClick={() => sendReaction(r.e)}
-                      className="grid h-10 w-10 place-items-center rounded-xl text-2xl hover:bg-white/10 hover:scale-125 transition-transform"
-                      title={r.e}
-                    >
-                      {r.icon}
-                    </button>
-                  ))}
-                </div>
+        <div className="mx-1 h-5 w-px bg-white/10" />
+
+        <PillButton
+          active
+          activeIcon={<Icon.ScreenShare size={18} />}
+          onClick={onShare}
+          label="Share"
+        />
+        <PillButton
+          active
+          activeIcon={<Icon.MessageSquare size={18} />}
+          onClick={() => onTab(activeTab === "chat" ? null : "chat")}
+          label="Chat"
+          highlight={activeTab === "chat"}
+        />
+        <PillButton
+          active
+          activeIcon={<Icon.Users size={18} />}
+          onClick={() => onTab(activeTab === "people" ? null : "people")}
+          label="People"
+          highlight={activeTab === "people"}
+        />
+
+        <div className="mx-1 h-5 w-px bg-white/10" />
+
+        {/* Reactions */}
+        <div className="relative">
+          <PillButton
+            active
+            activeIcon={<Reaction kind="thumbs" />}
+            onClick={() => setReactionsOpen(!reactionsOpen)}
+            label="React"
+          />
+          {reactionsOpen && (
+            <div
+              className="absolute bottom-full left-1/2 mb-3 -translate-x-1/2 rounded-2xl border border-white/10 bg-[#1a1a24]/95 p-2 shadow-2xl backdrop-blur-xl animate-scaleIn"
+              onMouseLeave={() => setReactionsOpen(false)}
+            >
+              <div className="flex gap-1">
+                {(["thumbs", "clap", "heart", "laugh", "fire", "party"] as const).map((r) => (
+                  <button
+                    key={r}
+                    onClick={() => sendReaction(r)}
+                    className="grid h-10 w-10 place-items-center rounded-xl text-white/50 hover:bg-white/10 hover:text-white hover:scale-125 transition-all duration-150"
+                    title={r}
+                  >
+                    <Reaction kind={r} />
+                  </button>
+                ))}
               </div>
-            )}
-          </div>
-
-          {/* More menu */}
-          <div className="relative">
-            <ZoomButton
-              active
-              activeIcon={<Icon.More size={18} />}
-              onClick={() => setMoreOpen((v) => !v)}
-              labelActive="More"
-              alwaysActive
-            />
-            {moreOpen && (
-              <div
-                className="absolute bottom-full left-1/2 mb-2 w-56 -translate-x-1/2 rounded-xl border border-white/10 bg-[#1a1a25] p-1 shadow-2xl"
-                onMouseLeave={() => setMoreOpen(false)}
-              >
-                <MoreItem icon={<Icon.Hand size={16} />} label="Raise hand" onClick={() => { raiseHand(); setMoreOpen(false); }} />
-                <MoreItem icon={<Icon.Pencil size={16} />} label="Whiteboard" onClick={() => { onWhiteboard(); setMoreOpen(false); }} />
-                <MoreItem icon={<Icon.FileText size={16} />} label="Notes" onClick={() => { onNotes(); setMoreOpen(false); }} />
-                <MoreItem icon={<Icon.FileText size={16} />} label="Transcript" onClick={() => { onTranscript(); setMoreOpen(false); }} />
-                <MoreItem icon={<Icon.Settings size={16} />} label="Settings" onClick={() => { onSettings(); setMoreOpen(false); }} />
-                {isAdmin && (
-                  <RecBtnInline
-                    recording={recording}
-                    setRecording={setRecording}
-                    onClose={() => setMoreOpen(false)}
-                    roomId={roomId}
-                    userName={userName}
-                  />
-                )}
-              </div>
-            )}
-          </div>
+            </div>
+          )}
         </div>
 
-        {/* Right: Leave */}
+        {/* More */}
+        <div className="relative">
+          <PillButton
+            active
+            activeIcon={<Icon.More size={18} />}
+            onClick={() => setMoreOpen(!moreOpen)}
+            label="More"
+          />
+          {moreOpen && (
+            <div
+              className="absolute bottom-full right-0 mb-3 w-52 rounded-xl border border-white/10 bg-[#1a1a24]/95 p-1 shadow-2xl backdrop-blur-xl animate-scaleIn"
+              onMouseLeave={() => setMoreOpen(false)}
+            >
+              <MoreItem icon={<Icon.Hand size={16} />} label="Raise hand" onClick={() => { raiseHand(); setMoreOpen(false); }} />
+              <MoreItem icon={<Icon.Pencil size={16} />} label="Whiteboard" onClick={() => { onWhiteboard(); setMoreOpen(false); }} />
+              <MoreItem icon={<Icon.FileText size={16} />} label="Notes" onClick={() => { onNotes(); setMoreOpen(false); }} />
+              <MoreItem icon={<Icon.FileText size={16} />} label="Transcript" onClick={() => { onTranscript(); setMoreOpen(false); }} />
+              <MoreItem icon={<Icon.Settings size={16} />} label="Settings" onClick={() => { onSettings(); setMoreOpen(false); }} />
+              {isAdmin && (
+                <RecBtnInline
+                  recording={recording}
+                  setRecording={setRecording}
+                  onClose={() => setMoreOpen(false)}
+                  roomId={roomId}
+                  userName={userName}
+                />
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="mx-1 h-5 w-px bg-white/10" />
+
+        {/* End call */}
         <button
           onClick={onLeave}
-          className="rounded-md bg-red-600 px-5 py-2 text-sm font-medium text-white hover:bg-red-700"
+          className="ml-0.5 flex h-10 items-center gap-1.5 rounded-full bg-red-500 px-5 text-xs font-semibold text-white hover:bg-red-400 transition-all shadow-lg shadow-red-500/20"
         >
-          End
+          <Icon.PhoneOff size={14} />
+          <span className="hidden sm:inline">End</span>
         </button>
       </div>
-    </footer>
+    </div>
   );
 }
 
@@ -233,42 +228,32 @@ function useStateLocal<T>(initial: T): [T, (v: T) => void] {
 
 import * as React from "react";
 
-function ZoomButton({
-  active, activeIcon, inactiveIcon, onClick, labelActive, labelInactive, alwaysActive, highlight,
+function PillButton({
+  active, activeIcon, inactiveIcon, onClick, label, highlight,
 }: {
   active: boolean;
   activeIcon: React.ReactNode;
   inactiveIcon?: React.ReactNode;
   onClick: () => void;
-  labelActive: string;
-  labelInactive?: string;
-  alwaysActive?: boolean;
+  label: string;
   highlight?: boolean;
 }) {
-  const isOff = !active && !alwaysActive;
+  const isOff = !active;
   return (
     <button
       onClick={onClick}
-      title={alwaysActive ? labelActive : (active ? labelActive : (labelInactive ?? labelActive))}
-      aria-label={alwaysActive ? labelActive : (active ? labelActive : (labelInactive ?? labelActive))}
-      className="group flex flex-col items-center gap-0.5"
+      title={label}
+      aria-label={label}
+      className={
+        "group relative flex h-10 w-10 items-center justify-center rounded-full transition-all duration-150 " +
+        (highlight
+          ? "bg-white/15 text-white"
+          : isOff
+          ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
+          : "text-white/60 hover:bg-white/10 hover:text-white")
+      }
     >
-      <span
-        className={
-          "flex h-9 w-9 items-center justify-center rounded-full transition-all " +
-          (highlight
-            ? "text-white"
-            : isOff
-            ? "bg-red-500 text-white hover:bg-red-600"
-            : "bg-[#3a3b40] text-white hover:bg-[#4a4b50]")
-        }
-        style={highlight ? { background: "var(--accent)" } : {}}
-      >
-        {active ? activeIcon : (inactiveIcon ?? activeIcon)}
-      </span>
-      <span className="text-[10px] leading-tight text-white/60 group-hover:text-white/80">
-        {alwaysActive ? labelActive : (active ? labelActive : (labelInactive ?? labelActive))}
-      </span>
+      {active ? activeIcon : (inactiveIcon ?? activeIcon)}
     </button>
   );
 }
@@ -277,9 +262,9 @@ function MoreItem({ icon, label, onClick }: { icon: React.ReactNode; label: stri
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-white/80 hover:bg-white/5"
+      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-white/60 hover:bg-white/5 hover:text-white/80 transition-colors"
     >
-      <span className="text-white/50">{icon}</span>
+      <span className="text-white/30">{icon}</span>
       {label}
     </button>
   );
