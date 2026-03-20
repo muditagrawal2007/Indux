@@ -402,7 +402,7 @@ kbd {
 .badge-danger  { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); }
 .badge-info    { background: color-mix(in srgb, var(--info) 12%, transparent); color: var(--info); }
 
-/* Aurora background — animated mesh */
+/* Aurora background — animated mesh with 4 parallax blobs */
 .aurora-bg {
   position: absolute;
   inset: 0;
@@ -411,26 +411,40 @@ kbd {
   z-index: -1;
 }
 .aurora-bg::before,
-.aurora-bg::after {
+.aurora-bg::after,
+.aurora-bg > .blob {
   content: "";
   position: absolute;
-  width: 60vw;
-  height: 60vw;
   border-radius: 50%;
   filter: blur(96px);
   opacity: 0.4;
+  will-change: transform;
 }
 .aurora-bg::before {
+  width: 60vw; height: 60vw;
   background: radial-gradient(circle, var(--accent) 0%, transparent 60%);
-  top: -20vw;
-  left: -10vw;
+  top: -20vw; left: -10vw;
   animation: aurora-1 18s ease-in-out infinite;
 }
 .aurora-bg::after {
+  width: 50vw; height: 50vw;
   background: radial-gradient(circle, var(--brand-400) 0%, transparent 60%);
-  bottom: -20vw;
-  right: -10vw;
+  bottom: -20vw; right: -10vw;
   animation: aurora-2 22s ease-in-out infinite;
+}
+.aurora-bg > .blob-1 {
+  width: 35vw; height: 35vw;
+  background: radial-gradient(circle, var(--brand-300) 0%, transparent 65%);
+  top: 30%; right: 25%;
+  opacity: 0.28;
+  animation: aurora-3 26s ease-in-out infinite;
+}
+.aurora-bg > .blob-2 {
+  width: 28vw; height: 28vw;
+  background: radial-gradient(circle, var(--brand-700) 0%, transparent 60%);
+  bottom: 30%; left: 35%;
+  opacity: 0.25;
+  animation: aurora-4 30s ease-in-out infinite;
 }
 @keyframes aurora-1 {
   0%, 100% { transform: translate(0, 0) scale(1); }
@@ -440,6 +454,29 @@ kbd {
   0%, 100% { transform: translate(0, 0) scale(1); }
   50%      { transform: translate(-6vw, -8vw) scale(1.15); }
 }
+@keyframes aurora-3 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  33%      { transform: translate(-4vw, 5vw) scale(1.08); }
+  66%      { transform: translate(6vw, -3vw) scale(0.95); }
+}
+@keyframes aurora-4 {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  50%      { transform: translate(5vw, -4vw) scale(1.12); }
+}
+
+/* Subtle grid overlay for hero */
+.grid-overlay {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(to right, var(--border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-size: 48px 48px;
+  opacity: 0.4;
+  mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 75%);
+  pointer-events: none;
+}
 
 /* Float animation for subtle elements */
 @keyframes float {
@@ -447,6 +484,60 @@ kbd {
   50%      { transform: translateY(-6px); }
 }
 .animate-float { animation: float 3s ease-in-out infinite; }
+
+/* Cursor blink for typing effect */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+.cursor::after {
+  content: "|";
+  display: inline-block;
+  margin-left: 2px;
+  color: var(--accent);
+  animation: blink 1s steps(2) infinite;
+  font-weight: 400;
+}
+
+/* Slide in from bottom for stat counters */
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.animate-slideUp { animation: slideUp 0.6s var(--ease) both; }
+
+/* Slow spin for loader rings */
+@keyframes spin-slow {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.animate-spin-slow { animation: spin-slow 8s linear infinite; }
+
+/* Marquee for the trust strip */
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-50%); }
+}
+.marquee-track { animation: marquee 40s linear infinite; }
+.marquee-track:hover { animation-play-state: paused; }
+
+/* Number ticker — shimmer for changes */
+@keyframes flash {
+  0%   { color: var(--text-primary); }
+  50%  { color: var(--accent); }
+  100% { color: var(--text-primary); }
+}
+.animate-flash { animation: flash 0.6s ease-out; }
+
+/* Wave (audio) for speaking indicator */
+@keyframes wave {
+  0%, 100% { transform: scaleY(0.3); }
+  50%      { transform: scaleY(1); }
+}
+.animate-wave {
+  animation: wave 0.9s ease-in-out infinite;
+  transform-origin: center bottom;
+}
 
 /* Bounce-in for toasts and notifications */
 @keyframes bounceIn {
