@@ -164,6 +164,9 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
   const [showShare, setShowShare] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [inLobby, setInLobby] = useState(false);
+  const [background, setBackground] = useState<"none" | "blur" | "sunset" | "office" | "forest" | "beach">(bgMode);
+  const [touchUp, setTouchUp] = useState(false);
+  const [spotlightSid, setSpotlightSid] = useState<string | null>(null);
 
   useEffect(() => {
     if (!roomState.participants?.length || !userName) { setInLobby(false); return; }
@@ -246,7 +249,17 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
       {/* Main content area — video grid fills this, side panel overlays */}
       <div className="relative flex-1 overflow-hidden">
         <div className="h-full w-full">
-          <CustomVideoGrid viewMode={viewMode} userName={userName} />
+          <CustomVideoGrid
+            viewMode={viewMode}
+            userName={userName}
+            background={background}
+            touchUp={touchUp}
+            spotlightSid={spotlightSid}
+            onSpotlight={setSpotlightSid}
+            isAdmin={isAdmin}
+            identity={userName}
+            roomId={roomId}
+          />
           <FloatingReactions roomId={roomId} identity={userName} />
         </div>
 
@@ -304,6 +317,18 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
         onSettings={() => setInRoomSettings(true)}
         onLeave={onLeave}
         canPublish={!inLobby}
+        onBackgroundChange={setBackground}
+        background={background}
+        onTouchUpToggle={() => setTouchUp((v) => !v)}
+        touchUp={touchUp}
+        onSpotlightCycle={() => {
+          // Cycle through remote participants
+          const remotes = roomState.participants ?? [];
+          if (remotes.length === 0) return;
+          const idx = remotes.findIndex((p: any) => p.sid === spotlightSid);
+          const next = remotes[(idx + 1) % remotes.length];
+          setSpotlightSid(next?.sid ?? null);
+        }}
       />
 
       {showShare && <ShareModal roomId={roomId} onClose={() => setShowShare(false)} />}
