@@ -1,106 +1,167 @@
 "use client";
 
+// Live network stats — bitrate, packet loss, jitter, RTT
+// Sampled every 2s from the local participant's RTC stats.
+
 import { useEffect, useState } from "react";
-import { useLocalParticipant, useConnectionState } from "@livekit/components-react";
-import { ConnectionState as LKState, Track } from "livekit-client";
+import { useLocalParticipant } from "@livekit/components-react";
 import { Icon } from "../../components/Icons";
 
 type Stats = {
-  bitrate: number;
+  bitrateKbps: number;
   packetLoss: number;
   jitter: number;
+  rtt: number;
   resolution: string;
-  frameRate: number;
 };
 
 export function NetworkStats() {
-  const [open, setOpen] = useState(false);
-  const [stats, setStats] = useState<Stats>({ bitrate: 0, packetLoss: 0, jitter: 0, resolution: "—", frameRate: 0 });
   const { localParticipant } = useLocalParticipant();
-  const connState = useConnectionState();
+  const [open, setOpen] = useState(false);
+  const [stats, setStats] = useState<Stats>({
+    bitrateKbps: 0,
+    packetLoss: 0,
+    jitter: 0,
+    rtt: 0,
+    resolution: "—",
+  });
+  const [history, setHistory] = useState<number[]>([]);
 
   useEffect(() => {
     if (!localParticipant) return;
-    const t = setInterval(async () => {
+    let cancelled = false;
+    async function sample() {
       try {
-        const pub = localParticipant.getTrackPublication(Track.Source.Camera as any);
-        const videoTrack = pub?.videoTrack;
-        const audioTrack = pub?.audioTrack;
-
+        const room = (localParticipant as any)?.room;
+        if (!room) return;
+        // localParticipant.connectionQuality is available; for more detail
+        // we read the engine's RTC stats.
+        const reports = await room.engine.client.getStats();
         let bitrate = 0;
-        let packetLoss = 0;
+        let loss = 0;
         let jitter = 0;
-        let resolution = "—";
-        let frameRate = 0;
-
-        if (videoTrack && (videoTrack as any).sender) {
-          const rtc = await (videoTrack as any).sender.getStats();
-          rtc.forEach((r: any) => {
-            if (r.type === "outbound-rtp" && r.kind === "video") {
-              bitrate += (r.bytesSent || 0) * 8 / 1000;
-              packetLoss = r.packetsLost || 0;
-              if (r.framesPerSecond) frameRate = Math.round(r.framesPerSecond);
-            }
-          });
+        let rtt = 0;
+        let w = 0;
+        let h = 0;
+        for (const r of reports.values()) {
+          if (r.type === "outbound-rtp" && r.kind === "video") {
+            // @ts-ignore
+            bitrate = (r.bytesSent ?? 0) * 8; // bits per second-ish
+            // @ts-ignore
+            w = r.frameWidth ?? w;
+            // @ts-ignore
+            h = r.frameHeight ?? h;
+          }
+          // @ts-ignore
+          if (r.packetsLost !== undefined && r.packetsSent) {
+            // @ts-ignore
+            loss = (r.packetsLost / (r.packetsSent + r.packetsLost)) * 100;
+          }
+          // @ts-ignore
+          if (r.jitter !== undefined) jitter = r.jitter * 1000;
+          // @ts-ignore
+          if (r.roundTripTime !== undefined) rtt = r.roundTripTime * 1000;
         }
-        if (audioTrack && (audioTrack as any).sender) {
-          const rtc = await (audioTrack as any).sender.getStats();
-          rtc.forEach((r: any) => {
-            if (r.type === "outbound-rtp" && r.kind === "audio") {
-              bitrate += (r.bytesSent || 0) * 8 / 1000;
-              jitter = r.jitter || 0;
-            }
-          });
-        }
-        setStats({ bitrate: Math.round(bitrate), packetLoss, jitter: Math.round(jitter * 1000), resolution, frameRate });
+        if (cancelled) return;
+        setStats({
+          bitrateKbps: Math.round(bitrate / 1000),
+          packetLoss: Math.round(loss * 10) / 10,
+          jitter: Math.round(jitter * 10) / 10,
+          rtt: Math.round(rtt),
+          resolution: w && h ? `${w}×${h}` : "—",
+        });
+        setHistory((h) => [...h.slice(-19), Math.round(bitrate / 1000)]);
       } catch {}
-    }, 1500);
-    return () => clearInterval(t);
+    }
+    sample();
+    const t = setInterval(sample, 2000);
+    return () => {
+      cancelled = true;
+      clearInterval(t);
+    };
   }, [localParticipant]);
 
-  const qualityLabel =
-    connState === LKState.Connected ? "Good"
-    : connState === LKState.Connecting ? "Connecting..."
-    : connState === LKState.Reconnecting ? "Reconnecting..."
-    : "Disconnected";
-
-  const qualityColor =
-    connState === LKState.Connected ? "text-green-400"
-    : connState === LKState.Connecting ? "text-amber-400"
-    : "text-red-400";
+  const max = Math.max(...history, 100);
+  const dots = history.map((v, i) => ({ v, x: (i / Math.max(1, history.length - 1)) * 100, y: 100 - (v / max) * 100 }));
 
   return (
     <div className="relative">
       <button
-        onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-1 rounded-lg bg-black/50 px-2 py-1 text-[10px] text-white/50 backdrop-blur-sm hover:bg-black/70 hover:text-white/70 transition-colors"
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 rounded-lg bg-black/50 px-2 py-1 text-[10px] text-white/50 backdrop-blur-sm hover:bg-black/70 hover:text-white/70 transition-colors"
         title="Network stats"
       >
-        <Icon.Wifi size={10} />
-        <span className={qualityColor}>{qualityLabel}</span>
+        <Icon.Signal size={10} />
+        <span className="font-mono">{stats.bitrateKbps}k</span>
       </button>
       {open && (
-        <div className="absolute bottom-full right-0 mb-2 w-60 rounded-xl border border-white/10 bg-[#1a1a24]/95 p-3 text-xs shadow-2xl backdrop-blur-xl">
-          <div className="mb-2 font-medium text-white/70">Connection</div>
-          <Row k="State" v={connState} />
-          <Row k="Bitrate" v={`${stats.bitrate} kbps`} />
-          <Row k="Packet loss" v={`${stats.packetLoss}`} />
-          <Row k="Jitter" v={`${stats.jitter} ms`} />
-          <Row k="Frame rate" v={`${stats.frameRate} fps`} />
-          <p className="mt-2 text-[10px] text-white/25">
-            Updates every 1.5s · auto-adjusts on poor network
-          </p>
+        <div className="absolute bottom-full right-0 mb-2 w-64 rounded-xl border border-white/10 bg-[#1a1a24]/95 p-3 shadow-2xl backdrop-blur-xl animate-scaleIn">
+          <div className="mb-2 flex items-center justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wide text-white/40">
+              Network
+            </span>
+            <button onClick={() => setOpen(false)} className="text-white/30 hover:text-white/60">
+              <Icon.Close size={11} />
+            </button>
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-[11px]">
+            <Stat label="Bitrate" value={`${stats.bitrateKbps} kbps`} />
+            <Stat label="Packet loss" value={`${stats.packetLoss}%`} highlight={stats.packetLoss > 3} />
+            <Stat label="Jitter" value={`${stats.jitter} ms`} highlight={stats.jitter > 30} />
+            <Stat label="RTT" value={`${stats.rtt} ms`} highlight={stats.rtt > 150} />
+            <Stat label="Resolution" value={stats.resolution} fullWidth />
+          </div>
+          {history.length > 1 && (
+            <div className="mt-3">
+              <div className="text-[9px] uppercase tracking-wide text-white/30">
+                Bitrate history (last 40s)
+              </div>
+              <svg
+                className="mt-1 h-12 w-full"
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
+              >
+                <polyline
+                  points={dots.map((d) => `${d.x},${d.y}`).join(" ")}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.5"
+                  className="text-emerald-400"
+                />
+              </svg>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
 
-function Row({ k, v }: { k: string; v: string }) {
+function Stat({
+  label,
+  value,
+  highlight,
+  fullWidth,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+  fullWidth?: boolean;
+}) {
   return (
-    <div className="flex items-center justify-between border-t border-white/5 py-1.5">
-      <span className="text-white/35">{k}</span>
-      <span className="text-white/70">{v}</span>
+    <div
+      className={
+        "rounded-lg border border-white/10 bg-white/5 p-2 " +
+        (fullWidth ? "col-span-2" : "") +
+        (highlight ? " border-amber-400/40 bg-amber-500/10" : "")
+      }
+    >
+      <div className="text-[9px] uppercase tracking-wide text-white/40">
+        {label}
+      </div>
+      <div className={"mt-0.5 font-mono " + (highlight ? "text-amber-300" : "text-white/80")}>
+        {value}
+      </div>
     </div>
   );
 }
