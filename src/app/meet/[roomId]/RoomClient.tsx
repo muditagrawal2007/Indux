@@ -16,6 +16,7 @@ import { SidePanel } from "./SidePanel";
 import { FloatingReactions } from "./Reactions";
 import { InRoomSettings } from "./InRoomSettings";
 import { NetworkStats } from "./NetworkStats";
+import { LiveCaptions } from "./LiveCaptions";
 import { QualityControl } from "./QualityControl";
 import { ViewToggle } from "./ViewToggle";
 import { ShortcutsHelp } from "./Shortcuts";
@@ -167,6 +168,7 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
   const [background, setBackground] = useState<"none" | "blur" | "sunset" | "office" | "forest" | "beach">(bgMode);
   const [touchUp, setTouchUp] = useState(false);
   const [spotlightSid, setSpotlightSid] = useState<string | null>(null);
+  const [captionsOn, setCaptionsOn] = useState(false);
 
   useEffect(() => {
     if (!roomState.participants?.length || !userName) { setInLobby(false); return; }
@@ -281,6 +283,7 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
               >
                 <Icon.Keyboard size={10} />
               </button>
+              <LiveCaptions enabled={captionsOn} setEnabled={setCaptionsOn} />
               <NetworkStats />
             </>
           )}
