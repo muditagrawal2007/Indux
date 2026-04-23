@@ -1,20 +1,30 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+// Live captions — real Web Speech API overlay.
+// Shows captions as a bottom-center floating karaoke-style overlay.
+// Speaker name is "You" (no speaker diarization without server processing).
 
-// Browser-based live captions using SpeechRecognition API
-// Supports Chrome (webkitSpeechRecognition) and Safari 14.1+
-export function LiveCaptions() {
-  const [enabled, setEnabled] = useState(false);
+import { useEffect, useRef, useState } from "react";
+import { Icon } from "../../components/Icons";
+
+declare global {
+  interface Window {
+    SpeechRecognition?: any;
+    webkitSpeechRecognition?: any;
+  }
+}
+
+export function LiveCaptions({ enabled, setEnabled }: { enabled: boolean; setEnabled: (v: boolean) => void }) {
   const [text, setText] = useState("");
   const [interim, setInterim] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [supported, setSupported] = useState(true);
   const recogRef = useRef<any>(null);
 
   useEffect(() => {
-    const W = window as any;
-    const SR = W.SpeechRecognition || W.webkitSpeechRecognition;
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SR) {
+      setSupported(false);
       setError("Speech recognition not supported in this browser");
       return;
     }
@@ -31,85 +41,100 @@ export function LiveCaptions() {
         else interimText += t;
       }
       if (finalText) {
-        setText((prev) => prev + finalText);
+        setText((prev) => (prev + " " + finalText).trim().slice(-500));
         setInterim("");
-      } else {
+      } else if (interimText) {
         setInterim(interimText);
       }
     };
     r.onerror = (e: any) => {
-      setError(e.error || "speech recognition error");
-      setEnabled(false);
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+        setError("Microphone access denied");
+        setEnabled(false);
+      }
     };
     r.onend = () => {
-      // Auto-restart if still enabled
-      if (enabled) {
-        try { r.start(); } catch {}
+      if (recogRef.current && enabled) {
+        try {
+          r.start();
+        } catch {
+          // ignore
+        }
       }
     };
     recogRef.current = r;
     return () => {
-      try { r.stop(); } catch {}
+      try {
+        r.stop();
+      } catch {}
+      recogRef.current = null;
     };
-  }, [enabled]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  const toggle = () => {
+  useEffect(() => {
     if (!recogRef.current) return;
     if (enabled) {
-      recogRef.current.stop();
-      setEnabled(false);
-    } else {
       setError(null);
-      setText("");
-      recogRef.current.start();
-      setEnabled(true);
+      try {
+        recogRef.current.start();
+      } catch {
+        // already started
+      }
+    } else {
+      try {
+        recogRef.current.stop();
+      } catch {}
     }
-  };
+  }, [enabled]);
 
-  const clear = () => {
-    setText("");
-    setInterim("");
-  };
-
-  if (error && !enabled) {
+  if (!supported) {
     return (
       <button
-        title={error}
-        className="rounded-md border border-gray-700 bg-gray-800 px-2.5 py-1 text-xs text-gray-400 hover:bg-gray-700"
+        title={error ?? "Not supported"}
+        className="flex items-center gap-1.5 rounded-lg bg-black/50 px-2 py-1 text-[10px] text-white/40 backdrop-blur-sm"
       >
-        Captions
+        <Icon.Info size={10} />
+        No captions
       </button>
     );
   }
 
   return (
-    <div className="flex items-center gap-1">
+    <>
       <button
-        onClick={toggle}
+        onClick={() => setEnabled(!enabled)}
         className={
-          "rounded-md px-2.5 py-1 text-xs font-medium " +
+          "flex items-center gap-1.5 rounded-lg px-2 py-1 text-[10px] font-medium backdrop-blur-sm transition-colors " +
           (enabled
-            ? "bg-yellow-600 text-white hover:bg-yellow-700"
-            : "border border-gray-700 bg-gray-800 text-gray-200 hover:bg-gray-700")
+            ? "bg-amber-500/20 text-amber-300"
+            : "bg-black/50 text-white/50 hover:bg-black/70 hover:text-white/70")
         }
+        title={error ?? "Live captions"}
       >
+        <span
+          className={
+            "h-1.5 w-1.5 rounded-full " +
+            (enabled ? "bg-amber-400 animate-pulse" : "bg-white/30")
+          }
+        />
         {enabled ? "CC on" : "Captions"}
       </button>
-      {enabled && text && (
-        <button
-          onClick={clear}
-          className="rounded-md border border-gray-700 bg-gray-800 px-2 py-1 text-[11px] text-gray-400 hover:bg-gray-700"
-          title="Clear captions"
-        >
-          
-        </button>
-      )}
       {enabled && (text || interim) && (
-        <div className="absolute bottom-16 left-1/2 max-w-2xl -translate-x-1/2 rounded-md bg-black/80 px-4 py-2 text-center text-sm text-white">
-          {text}
-          <span className="opacity-60">{interim}</span>
+        <div className="pointer-events-none absolute bottom-24 left-1/2 z-30 max-w-2xl -translate-x-1/2 animate-fadeIn">
+          <div className="rounded-2xl border border-white/10 bg-black/70 px-5 py-3 text-center shadow-2xl backdrop-blur-xl">
+            <div className="mb-1 flex items-center justify-center gap-2 text-[10px] uppercase tracking-wide text-white/40">
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-400" />
+              <span>You</span>
+              <span>· live captions</span>
+            </div>
+            <p className="text-base leading-relaxed text-white">
+              {text}
+              {interim && <span className="text-white/50">{interim}</span>}
+            </p>
+          </div>
         </div>
       )}
-    </div>
+    </>
   );
 }
