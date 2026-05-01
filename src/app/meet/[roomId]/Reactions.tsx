@@ -112,8 +112,17 @@ export function FloatingReactions({ roomId, identity }: { roomId: string; identi
 }
 
 // Inline message reactions (Zoom-style chat thumbs up)
-export function MessageReactions({ messageId, roomId, identity, reactions }: { messageId: string; roomId: string; identity: string; reactions: Record<string, string[]> }) {
-  const reactionList = reactions[messageId] ?? [];
+export function MessageReactions({
+  messageId,
+  roomId,
+  identity,
+  reactionList,
+}: {
+  messageId: string;
+  roomId: string;
+  identity: string;
+  reactionList: string[];
+}) {
   const myReaction = reactionList.find((r) => r.startsWith(identity + ":"));
   const summary = reactionList.reduce<Record<string, number>>((acc, r) => {
     const emoji = r.split(":")[1] ?? r;
@@ -136,14 +145,16 @@ export function MessageReactions({ messageId, roomId, identity, reactions }: { m
               });
             }}
             className={
-              "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] " +
+              "flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] transition-colors " +
               (myReaction?.endsWith(emoji)
-                ? "border-blue-500 bg-blue-500/15 text-blue-300"
+                ? "border-blue-400 bg-blue-500/15 text-blue-300"
                 : "border-white/10 bg-white/5 text-white/60 hover:bg-white/10")
             }
           >
-            <span className="inline-flex">{match && <Reaction kind={emoji as "thumbs" | "clap" | "heart" | "laugh" | "fire" | "party"} />}</span>
-            <span>{count}</span>
+            <span className="inline-flex">
+              {match && <Reaction kind={emoji as "thumbs" | "clap" | "heart" | "laugh" | "fire" | "party"} />}
+            </span>
+            <span className="font-mono">{count}</span>
           </button>
         );
       })}
