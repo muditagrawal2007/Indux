@@ -25,7 +25,7 @@ import { CustomPreJoin } from "./CustomPreJoin";
 import { CustomVideoGrid } from "./CustomVideoGrid";
 import { LobbyScreen } from "./Lobby";
 
-type Tab = "chat" | "people" | "qa" | "notes" | null;
+type Tab = "chat" | "people" | "polls" | "qa" | "notes" | null;
 
 const AdminPanel = dynamic(() => import("./AdminPanel").then((m) => m.AdminPanel), { ssr: false });
 const SettingsPanel = dynamic(() => import("./Settings").then((m) => m.SettingsPanel), { ssr: false });
@@ -205,6 +205,7 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
       else if (k === "escape") { setShowShortcuts(false); setSidebarTab(null); }
       else if (k === "c") setSidebarTab((t) => (t === "chat" ? null : "chat"));
       else if (k === "p") setSidebarTab((t) => (t === "people" ? null : "people"));
+      else if (k === "l") setSidebarTab((t) => (t === "polls" ? null : "polls"));
       else if (k === "q") setSidebarTab((t) => (t === "qa" ? null : "qa"));
       else if (k === "n") setSidebarTab((t) => (t === "notes" ? null : "notes"));
       else if (k === "w") setShowWhiteboard(true);
@@ -365,9 +366,9 @@ function HandRaiseToasts({ roomId, userName }: { roomId: string; userName: strin
         const r = await fetch(`/api/rooms/${roomId}/hand`);
         const data = await r.json();
         if (cancelled) return;
-        const hands = (data.participants ?? []).filter((p: any) => p.raisedHand);
+        const hands = (data.hands ?? data.participants ?? []).filter((p: any) => p.raisedHand !== false);
         const newToasts: { id: string; name: string }[] = hands
-          .filter((p: any) => p.name !== userName)
+          .filter((p: any) => p.name !== userName && p.identity !== userName)
           .map((p: any) => ({ id: p.identity, name: p.name || p.identity }));
         setToasts((prev) => {
           const prevIds = new Set(prev.map((t) => t.id));

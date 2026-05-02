@@ -40,7 +40,7 @@ export function ParticipantsPanel({
         if (!cancelled) {
           setList(partsRes.participants ?? []);
           setCohosts(cohostsRes.cohosts ?? []);
-          setHandRaises(handRes.hand ?? []);
+          setHandRaises(handRes.hands ?? handRes.hand ?? []);
         }
       } catch {}
     }
