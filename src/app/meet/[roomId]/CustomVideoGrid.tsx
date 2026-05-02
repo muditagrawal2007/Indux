@@ -120,6 +120,27 @@ function EmptyState() {
 }
 
 function TileView(props: any) {
+  if (props.all.length === 1) {
+    return (
+      <div className="flex h-full w-full items-center justify-center p-3">
+        <div className="aspect-video w-full max-w-4xl">
+          <ParticipantTile
+            key={props.all[0].sid || props.all[0].identity}
+            participant={props.all[0]}
+            isLocal={props.all[0].isLocal || props.all[0].identity === props.userName}
+            isSpeaking={props.activeSid === props.all[0].sid}
+            isSpotlighted={props.spotlightSid === props.all[0].sid}
+            isAdmin={props.isAdmin}
+            identity={props.identity}
+            roomId={props.roomId}
+            onSpotlight={props.onSpotlight}
+            background={props.background}
+            touchUp={props.touchUp && (props.all[0].isLocal || props.all[0].identity === props.userName)}
+          />
+        </div>
+      </div>
+    );
+  }
   return (
     <div
       className={"grid h-full w-full gap-1.5 sm:gap-2 " + getGridClass(props.all.length)}
@@ -259,8 +280,8 @@ function ParticipantTile({
   touchUp?: boolean;
   large?: boolean;
 }) {
-  const [hasVideo, setHasVideo] = useState(true);
-  const [isMuted, setIsMuted] = useState(false);
+  const [hasVideo, setHasVideo] = useState(false);
+  const [isMuted, setIsMuted] = useState(true);
   const [hovered, setHovered] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -270,6 +291,8 @@ function ParticipantTile({
     let micPub: any = null;
     let muteHandler: any;
     let unmuteHandler: any;
+    let micMuteHandler: any;
+    let micUnmuteHandler: any;
     try {
       camPub = participant.getTrackPublication?.(Track.Source.Camera);
       micPub = participant.getTrackPublication?.(Track.Source.Microphone);
@@ -282,7 +305,14 @@ function ParticipantTile({
         camPub.track.on("unmuted", unmuteHandler);
       }
       if (micPub) {
-        setIsMuted(!!micPub.isMuted);
+        setIsMuted(!!micPub.isMuted || !micPub.isMuted === undefined);
+        micMuteHandler = () => setIsMuted(true);
+        micUnmuteHandler = () => setIsMuted(false);
+        micPub.on?.("muted", micMuteHandler);
+        micPub.on?.("unmuted", micUnmuteHandler);
+      } else {
+        // No mic track at all → treat as muted (e.g. permission denied)
+        setIsMuted(true);
       }
     } catch {}
     return () => {
