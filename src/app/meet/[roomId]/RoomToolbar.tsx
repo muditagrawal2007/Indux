@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocalParticipant } from "@livekit/components-react";
 import { Icon, Reaction } from "../../components/Icons";
 
-type Tab = "chat" | "people" | "qa" | "notes" | null;
+type Tab = "chat" | "people" | "polls" | "qa" | "notes" | null;
 
 type Background = "none" | "blur" | "sunset" | "office" | "forest" | "beach";
 
@@ -215,6 +215,13 @@ export function RoomToolbar({
           onClick={() => onTab(activeTab === "chat" ? null : "chat")}
           label="Chat (C)"
           highlight={activeTab === "chat"}
+        />
+        <PillButton
+          active
+          activeIcon={<Icon.BarChart size={18} />}
+          onClick={() => onTab(activeTab === "polls" ? null : "polls")}
+          label="Polls (L)"
+          highlight={activeTab === "polls"}
         />
         <PillButton
           active
