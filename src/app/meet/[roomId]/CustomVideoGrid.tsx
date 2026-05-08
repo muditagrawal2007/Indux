@@ -343,15 +343,15 @@ function ParticipantTile({
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
       className={
-        "group relative overflow-hidden rounded-xl transition-all duration-200 " +
+        "group relative overflow-hidden rounded-2xl transition-all duration-300 " +
         (isSpeaking
-          ? "ring-2 ring-emerald-400/80 shadow-[0_0_28px_rgba(16,185,129,0.25)]"
+          ? "ring-2 ring-emerald-400 shadow-[0_0_32px_rgba(16,185,129,0.35)]"
           : isSpotlighted
-            ? "ring-2 ring-amber-300/80 shadow-[0_0_24px_rgba(252,211,77,0.2)]"
-            : "ring-1 ring-white/5") +
+            ? "ring-2 ring-amber-300 shadow-[0_0_28px_rgba(252,211,77,0.3)]"
+            : "ring-1 ring-white/8 hover:ring-white/15") +
         " " +
         (large ? "" : "aspect-video") +
-        " bg-[#111118]"
+        " bg-gradient-to-br from-[#15151e] via-[#0d0d14] to-[#08080d]"
       }
     >
       <BackgroundStyle background={isLocal ? background : undefined}>
@@ -367,15 +367,29 @@ function ParticipantTile({
           }
         />
         {!hasVideo && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-b from-[#1a1a24] to-[#111118]">
-            <div
-              className="grid h-16 w-16 sm:h-20 sm:w-20 place-items-center rounded-full text-2xl font-semibold text-white shadow-xl"
-              style={{
-                background: "linear-gradient(135deg, var(--accent), var(--brand-600))",
-              }}
-            >
-              {initials}
+          <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#1a1a28]/80 via-[#101018]/80 to-[#08080d]/80 backdrop-blur-[2px]">
+            <div className="relative">
+              {/* Soft glow behind avatar */}
+              <div
+                className="absolute inset-0 -m-12 rounded-full blur-2xl opacity-50"
+                style={{
+                  background: `linear-gradient(135deg, var(--accent), var(--brand-400))`,
+                }}
+              />
+              <div
+                className="relative grid h-20 w-20 sm:h-24 sm:w-24 place-items-center rounded-full text-3xl sm:text-4xl font-bold text-white shadow-2xl ring-4 ring-white/10"
+                style={{
+                  background: `linear-gradient(135deg, var(--accent), var(--brand-700))`,
+                }}
+              >
+                {initials}
+              </div>
             </div>
+            {large && (
+              <div className="absolute bottom-6 left-1/2 -translate-x-1/2 text-xs text-white/40">
+                {name}{isLocal && " (You)"}
+              </div>
+            )}
           </div>
         )}
       </BackgroundStyle>
