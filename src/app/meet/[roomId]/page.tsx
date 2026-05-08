@@ -21,7 +21,7 @@ export default async function MeetingRoomPage({
   const isEmbed = embed === "1" || embed === "true";
 
   return (
-    <div className="h-screen w-screen bg-gray-950">
+    <div className="h-screen w-screen bg-gray-950 text-white dark">
       <RoomClient
         roomId={roomId}
         identity={user}

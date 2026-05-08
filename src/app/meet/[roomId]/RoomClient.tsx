@@ -235,7 +235,7 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
   }
 
   return (
-    <div className="relative flex h-full w-full flex-col bg-black text-[color:var(--text-primary)]">
+    <div className="relative flex h-full w-full flex-col bg-black text-white">
       <HandRaiseToasts roomId={roomId} userName={userName} />
 
       <MeetingHeader
@@ -266,10 +266,21 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
           <FloatingReactions roomId={roomId} identity={userName} />
         </div>
 
-        {/* View toggle — floating top-left inside video area */}
+        {/* View toggle — floating bottom-right of toolbar */}
         {!isEmbed && (
-          <div className="absolute top-3 left-3 z-20">
+          <div className="absolute right-3 bottom-24 z-20">
             <ViewToggle view={viewMode} onViewChange={setViewMode} />
+          </div>
+        )}
+
+        {/* Meeting info banner — shown top-center for everyone, fades */}
+        {!isEmbed && (
+          <div className="pointer-events-none absolute top-16 left-1/2 z-10 -translate-x-1/2 animate-fadeIn">
+            <div className="rounded-full border border-white/10 bg-black/40 px-4 py-1.5 text-[11px] font-medium text-white/60 backdrop-blur-md">
+              <span className="font-mono tracking-wider">/{roomId}</span>
+              <span className="mx-2 text-white/20">·</span>
+              <span>{roomState.participants?.length || 1} in room</span>
+            </div>
           </div>
         )}
 
