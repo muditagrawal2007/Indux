@@ -1,9 +1,7 @@
 "use client";
 
-// Floating pill toolbar — bottom-center, dark glass
-// Matches Zoom/Google Meet/LiveKit Meet patterns
-// Now includes: virtual background, touch-up, spotlight, push-to-talk,
-// picture-in-picture, connection quality
+// Zoom-style floating toolbar — icon-above-text labels under each button.
+// Bigger, clearer, more discoverable than the original.
 
 import { useEffect, useRef, useState } from "react";
 import { useLocalParticipant } from "@livekit/components-react";
@@ -45,10 +43,25 @@ export function RoomToolbar({
   const [reactionsOpen, setReactionsOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const [bgOpen, setBgOpen] = useState(false);
-  const [pipOpen, setPipOpen] = useState(false);
   const [pttActive, setPttActive] = useState(false);
   const [quality, setQuality] = useState<"excellent" | "good" | "fair" | "poor" | "unknown">("unknown");
+  const [chatBadge, setChatBadge] = useState(0);
   const pttRef = useRef(false);
+
+  // Chat badge — count new messages (poll chat/reactions endpoint for count)
+  useEffect(() => {
+    let cancelled = false;
+    async function check() {
+      try {
+        const r = await fetch(`/api/rooms/${roomId}/chat?since=0`);
+        const d = await r.json();
+        if (!cancelled) setChatBadge((d.messages ?? []).length);
+      } catch {}
+    }
+    check();
+    const t = setInterval(check, 4000);
+    return () => { cancelled = true; clearInterval(t); };
+  }, [roomId]);
 
   async function toggleMic() {
     if (!localParticipant || !canPublish) return;
@@ -89,14 +102,14 @@ export function RoomToolbar({
     });
   }
 
-  // Push-to-talk: hold Space to unmute (when muted)
+  // Push-to-talk
   useEffect(() => {
     if (!canPublish) return;
     function onDown(e: KeyboardEvent) {
       if (e.code !== "Space") return;
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
-      if (micOn) return; // only when muted
+      if (micOn) return;
       e.preventDefault();
       if (pttRef.current) return;
       pttRef.current = true;
@@ -118,31 +131,22 @@ export function RoomToolbar({
     };
   }, [micOn, canPublish, localParticipant]);
 
-  // Connection quality — sample periodically from local participant
+  // Connection quality sample
   useEffect(() => {
     if (!localParticipant) return;
     let cancelled = false;
     async function sample() {
       try {
         const conn = (localParticipant as any).connectionQuality;
-        // livekit values: 0=unknown, 1=excellent, 2=good, 3=poor, 4=lost
         const map: Record<number, typeof quality> = {
-          1: "excellent",
-          2: "good",
-          3: "fair",
-          4: "poor",
+          1: "excellent", 2: "good", 3: "fair", 4: "poor",
         };
-        if (!cancelled && typeof conn === "number") {
-          setQuality(map[conn] ?? "unknown");
-        }
+        if (!cancelled && typeof conn === "number") setQuality(map[conn] ?? "unknown");
       } catch {}
     }
     sample();
     const t = setInterval(sample, 5000);
-    return () => {
-      cancelled = true;
-      clearInterval(t);
-    };
+    return () => { cancelled = true; clearInterval(t); };
   }, [localParticipant]);
 
   const bgOptions: { value: Background; label: string; preview: string }[] = [
@@ -155,10 +159,10 @@ export function RoomToolbar({
   ];
 
   return (
-    <div className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 sm:bottom-5">
+    <div className="fixed inset-x-0 bottom-0 z-40 flex justify-center px-4 pb-4 pt-6 pointer-events-none">
       {/* Status badges above toolbar */}
       {(recording || !canPublish || pttActive) && (
-        <div className="mb-2 flex justify-center gap-2">
+        <div className="absolute top-1 left-1/2 flex -translate-x-1/2 gap-2 pointer-events-auto">
           {recording && (
             <span className="animate-bounceIn flex items-center gap-1.5 rounded-full bg-red-500/15 px-3 py-1 text-[10px] font-medium uppercase tracking-wide text-red-400 backdrop-blur-md">
               <span className="relative inline-flex h-1.5 w-1.5">
@@ -183,67 +187,92 @@ export function RoomToolbar({
         </div>
       )}
 
-      {/* Main floating pill */}
-      <div className="flex items-center gap-0.5 rounded-full bg-[#1a1a24]/90 px-2 py-1.5 shadow-2xl shadow-black/50 backdrop-blur-xl border border-white/10">
-        {/* Core controls */}
-        <PillButton
-          active={micOn}
-          activeIcon={<Icon.Mic size={18} />}
-          inactiveIcon={<Icon.MicOff size={18} />}
+      {/* Main Zoom-style toolbar — pill with icon-above-text buttons */}
+      <div className="pointer-events-auto flex items-end gap-1 rounded-2xl bg-[#1c1d24]/95 px-2 py-2 shadow-2xl shadow-black/60 backdrop-blur-xl border border-white/10">
+        {/* Mic + Cam — bigger, with red-tinted-off state */}
+        <ToolButton
+          on={micOn}
+          onIcon={<Icon.Mic size={20} />}
+          offIcon={<Icon.MicOff size={20} />}
           onClick={toggleMic}
-          label={micOn ? "Mute (M)" : "Unmute (M)"}
+          label={micOn ? "Mute" : "Unmute"}
+          shortcut="M"
+          danger={!micOn}
         />
-        <PillButton
-          active={camOn}
-          activeIcon={<Icon.Video size={18} />}
-          inactiveIcon={<Icon.VideoOff size={18} />}
+        <ToolButton
+          on={camOn}
+          onIcon={<Icon.Video size={20} />}
+          offIcon={<Icon.VideoOff size={20} />}
           onClick={toggleCam}
-          label={camOn ? "Stop Video (V)" : "Start Video (V)"}
+          label={camOn ? "Stop Video" : "Start Video"}
+          shortcut="V"
+          danger={!camOn}
         />
 
-        <div className="mx-1 h-5 w-px bg-white/10" />
+        <Divider />
 
-        <PillButton
-          active
-          activeIcon={<Icon.ScreenShare size={18} />}
+        <ToolButton
+          on={true}
+          onIcon={<Icon.ScreenShare size={20} />}
           onClick={onShare}
           label="Share"
+          shortcut="S"
         />
-        <PillButton
-          active
-          activeIcon={<Icon.MessageSquare size={18} />}
+        <ToolButton
+          on={activeTab !== "chat"}
+          onIcon={<Icon.MessageSquare size={20} />}
           onClick={() => onTab(activeTab === "chat" ? null : "chat")}
-          label="Chat (C)"
-          highlight={activeTab === "chat"}
+          label="Chat"
+          shortcut="C"
+          active={activeTab === "chat"}
+          badge={chatBadge > 0 ? chatBadge : undefined}
         />
-        <PillButton
-          active
-          activeIcon={<Icon.BarChart size={18} />}
-          onClick={() => onTab(activeTab === "polls" ? null : "polls")}
-          label="Polls (L)"
-          highlight={activeTab === "polls"}
-        />
-        <PillButton
-          active
-          activeIcon={<Icon.Users size={18} />}
+        <ToolButton
+          on={activeTab !== "people"}
+          onIcon={<Icon.Users size={20} />}
           onClick={() => onTab(activeTab === "people" ? null : "people")}
-          label="People (P)"
-          highlight={activeTab === "people"}
+          label="People"
+          shortcut="P"
+          active={activeTab === "people"}
+        />
+        <ToolButton
+          on={activeTab !== "polls"}
+          onIcon={<Icon.BarChart size={20} />}
+          onClick={() => onTab(activeTab === "polls" ? null : "polls")}
+          label="Polls"
+          shortcut="L"
+          active={activeTab === "polls"}
+        />
+        <ToolButton
+          on={activeTab !== "qa"}
+          onIcon={<Icon.Help size={20} />}
+          onClick={() => onTab(activeTab === "qa" ? null : "qa")}
+          label="Q&A"
+          active={activeTab === "qa"}
+        />
+        <ToolButton
+          on={activeTab !== "notes"}
+          onIcon={<Icon.FileText size={20} />}
+          onClick={() => onTab(activeTab === "notes" ? null : "notes")}
+          label="Notes"
+          shortcut="N"
+          active={activeTab === "notes"}
         />
 
-        <div className="mx-1 h-5 w-px bg-white/10" />
+        <Divider />
 
         {/* Reactions */}
         <div className="relative">
-          <PillButton
-            active
-            activeIcon={<Reaction kind="thumbs" />}
-            onClick={() => setReactionsOpen(!reactionsOpen)}
+          <ToolButton
+            on={true}
+            onIcon={<Reaction kind="thumbs" />}
+            onClick={() => { setReactionsOpen(!reactionsOpen); setMoreOpen(false); setBgOpen(false); }}
             label="React"
+            active={reactionsOpen}
           />
           {reactionsOpen && (
             <div
-              className="absolute bottom-full left-1/2 mb-3 -translate-x-1/2 rounded-2xl border border-white/10 bg-[#1a1a24]/95 p-2 shadow-2xl backdrop-blur-xl animate-scaleIn"
+              className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-2xl border border-white/10 bg-[#1c1d24]/95 p-2 shadow-2xl backdrop-blur-xl animate-scaleIn"
               onMouseLeave={() => setReactionsOpen(false)}
             >
               <div className="flex gap-1">
@@ -262,19 +291,28 @@ export function RoomToolbar({
           )}
         </div>
 
-        {/* Virtual background + touch-up */}
+        {/* Raise hand */}
+        <ToolButton
+          on={true}
+          onIcon={<Icon.Hand size={20} />}
+          onClick={raiseHand}
+          label="Raise"
+          shortcut="R"
+        />
+
+        {/* Virtual background */}
         {canPublish && (
           <div className="relative">
-            <PillButton
-              active={bgOpen}
-              activeIcon={<Icon.Image size={18} />}
-              inactiveIcon={<Icon.Image size={18} />}
+            <ToolButton
+              on={true}
+              onIcon={<Icon.Image size={20} />}
               onClick={() => { setBgOpen(!bgOpen); setMoreOpen(false); setReactionsOpen(false); }}
-              label="Background"
+              label="Effects"
+              active={bgOpen}
             />
             {bgOpen && (
               <div
-                className="absolute bottom-full left-1/2 mb-3 -translate-x-1/2 w-64 rounded-2xl border border-white/10 bg-[#1a1a24]/95 p-3 shadow-2xl backdrop-blur-xl animate-scaleIn"
+                className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 w-72 rounded-2xl border border-white/10 bg-[#1c1d24]/95 p-3 shadow-2xl backdrop-blur-xl animate-scaleIn"
                 onMouseLeave={() => setBgOpen(false)}
               >
                 <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white/40">
@@ -284,10 +322,7 @@ export function RoomToolbar({
                   {bgOptions.map((opt) => (
                     <button
                       key={opt.value}
-                      onClick={() => {
-                        onBackgroundChange?.(opt.value);
-                        setBgOpen(false);
-                      }}
+                      onClick={() => { onBackgroundChange?.(opt.value); setBgOpen(false); }}
                       className={
                         "flex flex-col items-center gap-1 rounded-lg border p-1 transition-all " +
                         (background === opt.value
@@ -305,8 +340,7 @@ export function RoomToolbar({
                               : opt.preview === "blur"
                                 ? "rgba(255,255,255,0.15)"
                                 : opt.preview,
-                          backdropFilter:
-                            opt.preview === "blur" ? "blur(8px)" : undefined,
+                          backdropFilter: opt.preview === "blur" ? "blur(8px)" : undefined,
                         }}
                       />
                       <span className="text-[9px] text-white/60">{opt.label}</span>
@@ -314,7 +348,7 @@ export function RoomToolbar({
                   ))}
                 </div>
                 <button
-                  onClick={() => { onTouchUpToggle?.(); setBgOpen(false); }}
+                  onClick={() => { onTouchUpToggle?.(); }}
                   className={
                     "mt-2 flex w-full items-center justify-between rounded-lg border px-2.5 py-1.5 text-xs transition-all " +
                     (touchUp
@@ -326,40 +360,31 @@ export function RoomToolbar({
                     <Icon.Sparkles size={11} />
                     Touch-up
                   </span>
-                  <span className="font-mono text-[10px]">
-                    {touchUp ? "ON" : "OFF"}
-                  </span>
+                  <span className="font-mono text-[10px]">{touchUp ? "ON" : "OFF"}</span>
                 </button>
               </div>
             )}
           </div>
         )}
 
-        {/* More */}
+        {/* More (Whiteboard, Transcript, Spotlight, Settings) */}
         <div className="relative">
-          <PillButton
-            active={moreOpen}
-            activeIcon={<Icon.More size={18} />}
-            inactiveIcon={<Icon.More size={18} />}
+          <ToolButton
+            on={true}
+            onIcon={<Icon.More size={20} />}
             onClick={() => { setMoreOpen(!moreOpen); setBgOpen(false); setReactionsOpen(false); }}
             label="More"
+            active={moreOpen}
           />
           {moreOpen && (
             <div
-              className="absolute bottom-full right-0 mb-3 w-56 rounded-xl border border-white/10 bg-[#1a1a24]/95 p-1 shadow-2xl backdrop-blur-xl animate-scaleIn"
+              className="absolute bottom-full right-0 mb-2 w-56 rounded-xl border border-white/10 bg-[#1c1d24]/95 p-1 shadow-2xl backdrop-blur-xl animate-scaleIn"
               onMouseLeave={() => setMoreOpen(false)}
             >
-              <MoreItem icon={<Icon.Hand size={16} />} label="Raise hand (R)" onClick={() => { raiseHand(); setMoreOpen(false); }} />
-              <MoreItem icon={<Icon.Pin size={16} />} label={spotlightCycleEnabled() ? "Spotlight next" : "Spotlight"} onClick={() => { onSpotlightCycle?.(); setMoreOpen(false); }} />
-              <MoreItem icon={<Icon.Pencil size={16} />} label="Whiteboard (W)" onClick={() => { onWhiteboard(); setMoreOpen(false); }} />
-              <MoreItem icon={<Icon.FileText size={16} />} label="Notes (N)" onClick={() => { onNotes(); setMoreOpen(false); }} />
-              <MoreItem icon={<Icon.FileText size={16} />} label="Transcript (T)" onClick={() => { onTranscript(); setMoreOpen(false); }} />
+              <MoreItem icon={<Icon.Pin size={16} />} label="Spotlight next" onClick={() => { onSpotlightCycle?.(); setMoreOpen(false); }} />
+              <MoreItem icon={<Icon.Pencil size={16} />} label="Whiteboard" shortcut="W" onClick={() => { onWhiteboard(); setMoreOpen(false); }} />
+              <MoreItem icon={<Icon.Sparkles size={16} />} label="Transcript" shortcut="T" onClick={() => { onTranscript(); setMoreOpen(false); }} />
               <MoreItem icon={<Icon.Settings size={16} />} label="Settings" onClick={() => { onSettings(); setMoreOpen(false); }} />
-              <MoreItem
-                icon={pipOpen ? <Icon.EyeOff size={16} /> : <Icon.Eye size={16} />}
-                label={pipOpen ? "Exit mini view" : "Mini view (PiP)"}
-                onClick={() => { setPipOpen(!pipOpen); setMoreOpen(false); }}
-              />
               {isAdmin && (
                 <RecBtnInline
                   recording={recording}
@@ -373,17 +398,17 @@ export function RoomToolbar({
           )}
         </div>
 
-        {/* Connection quality indicator (always visible) */}
+        <Divider />
+
+        {/* Connection quality indicator */}
         <QualityIndicator quality={quality} />
 
-        <div className="mx-1 h-5 w-px bg-white/10" />
-
-        {/* End call */}
+        {/* End call — big red button */}
         <button
           onClick={onLeave}
-          className="ml-0.5 flex h-10 items-center gap-1.5 rounded-full bg-red-500 px-5 text-xs font-semibold text-white hover:bg-red-400 transition-all shadow-lg shadow-red-500/20"
+          className="ml-2 flex h-12 items-center gap-2 rounded-xl bg-red-500 px-5 text-sm font-semibold text-white hover:bg-red-400 transition-all shadow-lg shadow-red-500/30"
         >
-          <Icon.PhoneOff size={14} />
+          <Icon.PhoneOff size={16} />
           <span className="hidden sm:inline">End</span>
         </button>
       </div>
@@ -391,39 +416,58 @@ export function RoomToolbar({
   );
 }
 
-function spotlightCycleEnabled(): boolean {
-  // Just a UI label helper — actual cycle lives in RoomClient.
-  return true;
-}
-
-function PillButton({
-  active, activeIcon, inactiveIcon, onClick, label, highlight,
+function ToolButton({
+  on,
+  onIcon,
+  offIcon,
+  onClick,
+  label,
+  shortcut,
+  active,
+  danger,
+  badge,
 }: {
-  active: boolean;
-  activeIcon: React.ReactNode;
-  inactiveIcon?: React.ReactNode;
+  on: boolean;
+  onIcon: React.ReactNode;
+  offIcon?: React.ReactNode;
   onClick: () => void;
   label: string;
-  highlight?: boolean;
+  shortcut?: string;
+  active?: boolean;
+  danger?: boolean;
+  badge?: number;
 }) {
-  const isOff = !active;
+  const showOff = !on;
+  const baseColor = danger
+    ? "text-red-300 bg-red-500/15 hover:bg-red-500/25"
+    : active
+      ? "bg-white/15 text-white"
+      : "text-white/70 hover:bg-white/8 hover:text-white";
   return (
     <button
       onClick={onClick}
-      title={label}
+      title={shortcut ? `${label} (${shortcut})` : label}
       aria-label={label}
       className={
-        "group relative flex h-10 w-10 items-center justify-center rounded-full transition-all duration-150 " +
-        (highlight
-          ? "bg-white/15 text-white"
-          : isOff
-          ? "bg-red-500/20 text-red-400 hover:bg-red-500/30"
-          : "text-white/60 hover:bg-white/10 hover:text-white")
+        "group relative flex h-12 w-14 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 transition-all duration-150 " +
+        baseColor
       }
     >
-      {active ? activeIcon : (inactiveIcon ?? activeIcon)}
+      <span className="relative">
+        {showOff && offIcon ? offIcon : onIcon}
+        {badge !== undefined && (
+          <span className="absolute -right-2 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+            {badge > 99 ? "99+" : badge}
+          </span>
+        )}
+      </span>
+      <span className="text-[9px] font-medium leading-none">{label}</span>
     </button>
   );
+}
+
+function Divider() {
+  return <div className="mx-1 h-8 w-px bg-white/10" />;
 }
 
 function QualityIndicator({ quality }: { quality: "excellent" | "good" | "fair" | "poor" | "unknown" }) {
@@ -432,14 +476,11 @@ function QualityIndicator({ quality }: { quality: "excellent" | "good" | "fair" 
     good: { filled: 3, color: "bg-emerald-400", label: "Good" },
     fair: { filled: 2, color: "bg-amber-400", label: "Fair" },
     poor: { filled: 1, color: "bg-red-400", label: "Poor" },
-    unknown: { filled: 2, color: "bg-white/30", label: "Detecting..." },
+    unknown: { filled: 2, color: "bg-white/30", label: "Connecting..." },
   };
   const cfg = bars[quality];
   return (
-    <div
-      className="flex items-center gap-1 rounded-full bg-white/5 px-2 py-1.5"
-      title={`Connection: ${cfg.label}`}
-    >
+    <div className="flex h-12 w-14 flex-col items-center justify-center gap-0.5" title={`Connection: ${cfg.label}`}>
       <div className="flex items-end gap-0.5">
         {[1, 2, 3, 4].map((i) => (
           <span
@@ -452,23 +493,40 @@ function QualityIndicator({ quality }: { quality: "excellent" | "good" | "fair" 
           />
         ))}
       </div>
+      <span className="text-[9px] font-medium leading-none text-white/60">{cfg.label}</span>
     </div>
   );
 }
 
-function MoreItem({ icon, label, onClick }: { icon: React.ReactNode; label: string; onClick: () => void }) {
+function MoreItem({
+  icon, label, onClick, shortcut,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  onClick: () => void;
+  shortcut?: string;
+}) {
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-white/60 hover:bg-white/5 hover:text-white/80 transition-colors"
+      className="flex w-full items-center justify-between gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-white/70 hover:bg-white/5 hover:text-white transition-colors"
     >
-      <span className="text-white/30">{icon}</span>
-      {label}
+      <span className="flex items-center gap-2.5">
+        <span className="text-white/40">{icon}</span>
+        {label}
+      </span>
+      {shortcut && <kbd>{shortcut}</kbd>}
     </button>
   );
 }
 
-function RecBtnInline({ recording, setRecording, onClose, roomId, userName }: { recording: boolean; setRecording: (v: boolean) => void; onClose: () => void; roomId: string; userName: string }) {
+function RecBtnInline({ recording, setRecording, onClose, roomId, userName }: {
+  recording: boolean;
+  setRecording: (v: boolean) => void;
+  onClose: () => void;
+  roomId: string;
+  userName: string;
+}) {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const startTimeRef = useRef<number>(0);
@@ -520,7 +578,7 @@ function RecBtnInline({ recording, setRecording, onClose, roomId, userName }: { 
   return (
     <MoreItem
       icon={recording ? <Icon.Stop size={16} /> : <Icon.Record size={16} />}
-      label={recording ? "Stop recording" : "Record"}
+      label={recording ? "Stop recording" : "Record this meeting"}
       onClick={recording ? stop : start}
     />
   );
