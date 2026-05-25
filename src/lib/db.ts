@@ -293,12 +293,18 @@ export function votePoll(pollId: string, identity: string, optionIndex: number):
 
 export function pollResults(pollId: string): { counts: number[]; voters: Record<string, number> } {
   const db = getDb();
+  const poll = getPoll(pollId);
+  const totalOptions = poll ? poll.options.length : 0;
   const rows = db
     .prepare(`SELECT option_index, COUNT(*) as c FROM poll_votes WHERE poll_id = ? GROUP BY option_index`)
     .all(pollId) as Array<{ option_index: number; c: number }>;
+  const counts = new Array<number>(totalOptions).fill(0);
   const voters: Record<string, number> = {};
-  for (const r of rows) voters[r.option_index] = r.c;
-  return { counts: rows.map((r) => r.c), voters };
+  for (const r of rows) {
+    if (r.option_index >= 0 && r.option_index < totalOptions) counts[r.option_index] = r.c;
+    voters[r.option_index] = r.c;
+  }
+  return { counts, voters };
 }
 
 export function closePoll(pollId: string): void {
