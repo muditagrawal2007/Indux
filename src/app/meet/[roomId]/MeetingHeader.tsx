@@ -20,7 +20,6 @@ export function MeetingHeader({
   const [copied, setCopied] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [hidden, setHidden] = useState(false);
   const link = typeof window !== "undefined" ? `${window.location.origin}/meet/${roomId}` : `/meet/${roomId}`;
 
   const copy = async () => {
@@ -35,22 +34,9 @@ export function MeetingHeader({
     return () => clearInterval(t);
   }, []);
 
-  // Auto-hide header after 5s of no mouse movement
-  useEffect(() => {
-    let timeout: ReturnType<typeof setTimeout>;
-    const reset = () => {
-      setHidden(false);
-      clearTimeout(timeout);
-      timeout = setTimeout(() => setHidden(true), 5000);
-    };
-    const onMove = () => reset();
-    document.addEventListener("mousemove", onMove);
-    reset();
-    return () => {
-      document.removeEventListener("mousemove", onMove);
-      clearTimeout(timeout);
-    };
-  }, []);
+  // Header stays visible — never auto-hide (Zoom pattern).
+  // Earlier we hid the header after 5s of no mouse movement, but that
+  // made the Manage button unreachable. Now it's permanently visible.
 
   const hrs = Math.floor(elapsed / 3600);
   const mins = Math.floor((elapsed % 3600) / 60);
@@ -61,11 +47,7 @@ export function MeetingHeader({
 
   return (
     <header
-      className={
-        "absolute top-0 left-0 right-0 z-30 flex items-center justify-between bg-gradient-to-b from-black/70 via-black/30 to-transparent px-4 py-3 backdrop-blur-sm transition-all duration-500 " +
-        (hidden ? "-translate-y-full opacity-0" : "translate-y-0 opacity-100")
-      }
-      onMouseEnter={() => setHidden(false)}
+      className="absolute top-0 left-0 right-0 z-30 flex items-center justify-between bg-gradient-to-b from-black/70 via-black/30 to-transparent px-4 py-3 backdrop-blur-sm"
     >
       {/* Left: branding + room info */}
       <div className="flex items-center gap-2 text-sm text-white">
