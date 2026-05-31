@@ -791,7 +791,9 @@ export default function InduxLauncher() {
                 ["Features", "/#features"],
                 ["Schedule", "/schedule"],
                 ["Settings", "/settings"],
+                ["Recordings", "/recordings"],
                 ["Roadmap", "/roadmap"],
+                ["Docs", "/docs"],
               ]}
             />
             <FooterCol

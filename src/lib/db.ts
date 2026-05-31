@@ -348,6 +348,13 @@ export function listRecordings(room: string): Recording[] {
     .all(room) as Recording[];
 }
 
+export function listAllRecordings(limit = 100): Recording[] {
+  const db = getDb();
+  return db
+    .prepare(`SELECT * FROM recordings ORDER BY started_at DESC LIMIT ?`)
+    .all(limit) as Recording[];
+}
+
 // === Breakout rooms ===
 export function createBreakout(room: string, subRoom: string, createdBy: string): void {
   const db = getDb();

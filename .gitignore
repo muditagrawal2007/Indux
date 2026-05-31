@@ -46,8 +46,9 @@ indux-meet.db
 indux-meet.db-shm
 indux-meet.db-wal
 lk-credentials.cjs
+# Recordings directory at repo root only — not the recordings app routes
+/recordings/
 uploads/
-recordings/
 
 # IDE
 .idea/
