@@ -22,6 +22,12 @@ export function getDb(): Database.Database {
 }
 
 function init(db: Database.Database) {
+  // Idempotent ALTERs for older DBs that don't have newer columns
+  const addCol = (table: string, col: string, decl: string) => {
+    try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${decl}`); } catch {}
+  };
+  addCol("polls", "kind", "TEXT NOT NULL DEFAULT 'multiple_choice'");
+
   db.exec(`
     CREATE TABLE IF NOT EXISTS chat (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -166,6 +172,149 @@ function init(db: Database.Database) {
       action_items TEXT NOT NULL DEFAULT '[]',
       generated_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
     );
+
+    CREATE TABLE IF NOT EXISTS audit_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      room TEXT NOT NULL,
+      actor TEXT NOT NULL,
+      action TEXT NOT NULL,
+      target TEXT,
+      detail TEXT,
+      created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+    );
+    CREATE INDEX IF NOT EXISTS idx_audit_room_time ON audit_log(room, created_at DESC);
+
+    CREATE TABLE IF NOT EXISTS ai_conversations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      room TEXT NOT NULL,
+      identity TEXT NOT NULL,
+      role TEXT NOT NULL,           -- 'user' | 'assistant' | 'system'
+      content TEXT NOT NULL,
+      meta TEXT,                    -- JSON (e.g. citations, sources)
+      created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+    );
+    CREATE INDEX IF NOT EXISTS idx_ai_conv_room_time ON ai_conversations(room, created_at);
+
+    CREATE TABLE IF NOT EXISTS ai_insights (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      room TEXT NOT NULL,
+      kind TEXT NOT NULL,           -- 'action_item' | 'decision' | 'question' | 'highlight'
+      text TEXT NOT NULL,
+      source TEXT,                  -- speaker identity that triggered it
+      confidence REAL DEFAULT 1.0,
+      resolved INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+    );
+    CREATE INDEX IF NOT EXISTS idx_ai_insights_room ON ai_insights(room, created_at);
+
+    CREATE TABLE IF NOT EXISTS engagement_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      room TEXT NOT NULL,
+      identity TEXT NOT NULL,
+      kind TEXT NOT NULL,           -- 'join' | 'leave' | 'react' | 'hand' | 'speak' | 'chat' | 'poll_vote' | 'mic_on' | 'mic_off' | 'cam_on' | 'cam_off'
+      weight REAL NOT NULL DEFAULT 1.0,
+      meta TEXT,
+      ts INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+    );
+    CREATE INDEX IF NOT EXISTS idx_engagement_room_time ON engagement_events(room, ts);
+    CREATE INDEX IF NOT EXISTS idx_engagement_identity ON engagement_events(room, identity, ts);
+
+    CREATE TABLE IF NOT EXISTS talk_time (
+      room TEXT NOT NULL,
+      identity TEXT NOT NULL,
+      bucket_ms INTEGER NOT NULL,   -- aligned to bucket size for aggregation
+      duration_ms INTEGER NOT NULL DEFAULT 0,
+      updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+      PRIMARY KEY (room, identity, bucket_ms)
+    );
+
+    CREATE TABLE IF NOT EXISTS cursors (
+      room TEXT NOT NULL,
+      identity TEXT NOT NULL,
+      name TEXT,
+      x REAL NOT NULL,
+      y REAL NOT NULL,
+      ts INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+      PRIMARY KEY (room, identity)
+    );
+
+    CREATE TABLE IF NOT EXISTS spatial_positions (
+      room TEXT NOT NULL,
+      identity TEXT NOT NULL,
+      x REAL NOT NULL,
+      y REAL NOT NULL,
+      updated_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+      PRIMARY KEY (room, identity)
+    );
+
+    CREATE TABLE IF NOT EXISTS music_queue (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      room TEXT NOT NULL,
+      url TEXT NOT NULL,
+      title TEXT NOT NULL,
+      added_by TEXT NOT NULL,
+      votes INTEGER NOT NULL DEFAULT 1,
+      played INTEGER NOT NULL DEFAULT 0,
+      created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+    );
+    CREATE INDEX IF NOT EXISTS idx_music_queue_room ON music_queue(room, played, created_at);
+
+    CREATE TABLE IF NOT EXISTS trivia_rounds (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      room TEXT NOT NULL,
+      question TEXT NOT NULL,
+      options TEXT NOT NULL,       -- JSON array
+      correct_index INTEGER NOT NULL,
+      category TEXT,
+      created_by TEXT NOT NULL,
+      created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+    );
+
+    CREATE TABLE IF NOT EXISTS trivia_answers (
+      round_id INTEGER NOT NULL,
+      identity TEXT NOT NULL,
+      name TEXT,
+      answer_index INTEGER NOT NULL,
+      correct INTEGER NOT NULL,
+      score INTEGER NOT NULL DEFAULT 0,
+      response_ms INTEGER NOT NULL DEFAULT 0,
+      answered_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+      PRIMARY KEY (round_id, identity),
+      FOREIGN KEY (round_id) REFERENCES trivia_rounds(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS word_cloud_responses (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      poll_id TEXT NOT NULL,
+      identity TEXT NOT NULL,
+      word TEXT NOT NULL,
+      created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+    );
+    CREATE INDEX IF NOT EXISTS idx_word_cloud_poll ON word_cloud_responses(poll_id);
+
+    CREATE TABLE IF NOT EXISTS bingo_cards (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      room TEXT NOT NULL,
+      identity TEXT NOT NULL,
+      name TEXT,
+      phrases TEXT NOT NULL,        -- JSON array of 24 phrases (5x5 center = FREE)
+      marks TEXT NOT NULL DEFAULT '[]',  -- JSON array of 25 booleans
+      has_bingo INTEGER NOT NULL DEFAULT 0,
+      completed_at INTEGER,
+      created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
+      UNIQUE(room, identity)
+    );
+
+    CREATE TABLE IF NOT EXISTS recaps (
+      room TEXT PRIMARY KEY,
+      summary TEXT NOT NULL,
+      action_items TEXT NOT NULL DEFAULT '[]',  -- JSON
+      decisions TEXT NOT NULL DEFAULT '[]',     -- JSON
+      highlights TEXT NOT NULL DEFAULT '[]',    -- JSON
+      participants TEXT NOT NULL DEFAULT '[]',  -- JSON
+      duration_ms INTEGER NOT NULL DEFAULT 0,
+      generated_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+    );
   CREATE TABLE IF NOT EXISTS users (
         id TEXT PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
@@ -238,6 +387,8 @@ export function listChat(room: string, sinceId = 0, limit = 200): ChatMessage[] 
 }
 
 // === Polls ===
+export type PollKind = "multiple_choice" | "word_cloud";
+
 export type Poll = {
   id: string;
   room: string;
@@ -246,27 +397,29 @@ export type Poll = {
   created_by: string;
   created_at: number;
   closed: boolean;
+  kind: PollKind;
 };
 
-export function createPoll(p: Omit<Poll, "created_at" | "closed">): Poll {
+export function createPoll(p: Omit<Poll, "created_at" | "closed" | "kind"> & { kind?: PollKind }): Poll {
   const db = getDb();
   db.prepare(
-    `INSERT INTO polls (id, room, question, options, created_by)
-     VALUES (?, ?, ?, ?, ?)`
-  ).run(p.id, p.room, p.question, JSON.stringify(p.options), p.created_by);
+    `INSERT INTO polls (id, room, question, options, created_by, kind)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(p.id, p.room, p.question, JSON.stringify(p.options), p.created_by, p.kind ?? "multiple_choice");
   return getPoll(p.id)!;
 }
 
 export function getPoll(id: string): Poll | null {
   const db = getDb();
   const row = db.prepare(`SELECT * FROM polls WHERE id = ?`).get(id) as
-    | (Omit<Poll, "options" | "closed"> & { options: string; closed: number })
+    | (Omit<Poll, "options" | "closed"> & { options: string; closed: number; kind?: string })
     | undefined;
   if (!row) return null;
   return {
     ...row,
     options: JSON.parse(row.options),
     closed: !!row.closed,
+    kind: (row.kind as PollKind) ?? "multiple_choice",
   };
 }
 
@@ -274,12 +427,17 @@ export function listPolls(room: string): Poll[] {
   const db = getDb();
   const rows = db
     .prepare(`SELECT * FROM polls WHERE room = ? ORDER BY created_at DESC`)
-    .all(room) as Array<Omit<Poll, "options" | "closed"> & { options: string; closed: number }>;
+    .all(room) as Array<Omit<Poll, "options" | "closed"> & { options: string; closed: number; kind?: string }>;
   return rows.map((r) => ({
     ...r,
     options: JSON.parse(r.options),
-    closed: !!r.closed,
+    closed: !!row_closed(r),
+    kind: (r.kind as PollKind) ?? "multiple_choice",
   }));
+}
+
+function row_closed(r: { closed: number }): boolean {
+  return !!r.closed;
 }
 
 export function votePoll(pollId: string, identity: string, optionIndex: number): void {
@@ -750,4 +908,449 @@ export function saveSummary(s: Omit<AISummary, "generated_at">): AISummary {
 export function getSummary(room: string): AISummary | null {
   const db = getDb();
   return (db.prepare(`SELECT * FROM ai_summaries WHERE room = ?`).get(room) as AISummary) ?? null;
+}
+
+// === AI Sidekick (chat with the meeting) ===
+export type AIConversation = {
+  id: number;
+  room: string;
+  identity: string;
+  role: "user" | "assistant" | "system";
+  content: string;
+  meta: string | null;
+  created_at: number;
+};
+
+export function addAIMessage(m: Omit<AIConversation, "id" | "created_at" | "meta"> & { meta?: string | null }): AIConversation {
+  const db = getDb();
+  const info = db
+    .prepare(
+      `INSERT INTO ai_conversations (room, identity, role, content, meta)
+       VALUES (?, ?, ?, ?, ?)`
+    )
+    .run(m.room, m.identity, m.role, m.content, m.meta ?? null);
+  return db
+    .prepare(`SELECT * FROM ai_conversations WHERE id = ?`)
+    .get(info.lastInsertRowid) as AIConversation;
+}
+
+export function listAIConversation(room: string, identity: string, limit = 100): AIConversation[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT * FROM ai_conversations WHERE room = ? AND identity = ? ORDER BY id ASC LIMIT ?`
+    )
+    .all(room, identity, limit) as AIConversation[];
+}
+
+// === AI Insights (auto-extracted action items, decisions, questions) ===
+export type AIInsight = {
+  id: number;
+  room: string;
+  kind: "action_item" | "decision" | "question" | "highlight";
+  text: string;
+  source: string | null;
+  confidence: number;
+  resolved: boolean;
+  created_at: number;
+};
+
+export function addInsight(i: Omit<AIInsight, "id" | "created_at" | "resolved">): AIInsight {
+  const db = getDb();
+  const info = db
+    .prepare(
+      `INSERT INTO ai_insights (room, kind, text, source, confidence)
+       VALUES (?, ?, ?, ?, ?)`
+    )
+    .run(i.room, i.kind, i.text, i.source ?? null, i.confidence ?? 1.0);
+  return db
+    .prepare(`SELECT * FROM ai_insights WHERE id = ?`)
+    .get(info.lastInsertRowid) as AIInsight;
+}
+
+export function listInsights(room: string, onlyOpen = false): AIInsight[] {
+  const db = getDb();
+  const sql = onlyOpen
+    ? `SELECT * FROM ai_insights WHERE room = ? AND resolved = 0 ORDER BY created_at DESC`
+    : `SELECT * FROM ai_insights WHERE room = ? ORDER BY created_at DESC LIMIT 200`;
+  return db.prepare(sql).all(room) as AIInsight[];
+}
+
+export function resolveInsight(id: number): void {
+  const db = getDb();
+  db.prepare(`UPDATE ai_insights SET resolved = 1 WHERE id = ?`).run(id);
+}
+
+// === Engagement events (talk-time, attention, participation) ===
+export type EngagementEvent = {
+  id: number;
+  room: string;
+  identity: string;
+  kind: string;
+  weight: number;
+  meta: string | null;
+  ts: number;
+};
+
+export function logEngagement(e: Omit<EngagementEvent, "id">): void {
+  const db = getDb();
+  db.prepare(
+    `INSERT INTO engagement_events (room, identity, kind, weight, meta, ts)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  ).run(e.room, e.identity, e.kind, e.weight, e.meta ?? null, e.ts);
+}
+
+export function aggregateEngagement(
+  room: string,
+  sinceMs: number
+): Array<{ identity: string; kind: string; count: number; weight: number }> {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT identity, kind, COUNT(*) as count, SUM(weight) as weight
+       FROM engagement_events WHERE room = ? AND ts >= ?
+       GROUP BY identity, kind`
+    )
+    .all(room, sinceMs) as any;
+}
+
+export function aggregateTalkTime(
+  room: string,
+  bucketMs: number,
+  sinceMs: number
+): Array<{ identity: string; total_ms: number; buckets: number }> {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT identity, SUM(duration_ms) as total_ms, COUNT(*) as buckets
+       FROM talk_time WHERE room = ? AND bucket_ms >= ?
+       GROUP BY identity ORDER BY total_ms DESC`
+    )
+    .all(room, sinceMs) as any;
+}
+
+export function addTalkTime(room: string, identity: string, bucketMs: number, durationMs: number): void {
+  const db = getDb();
+  db.prepare(
+    `INSERT INTO talk_time (room, identity, bucket_ms, duration_ms)
+     VALUES (?, ?, ?, ?)
+     ON CONFLICT(room, identity, bucket_ms) DO UPDATE SET duration_ms = duration_ms + excluded.duration_ms`
+  ).run(room, identity, bucketMs, durationMs);
+}
+
+// === Cursors (attention / pointer presence) ===
+export type Cursor = {
+  room: string;
+  identity: string;
+  name: string | null;
+  x: number;
+  y: number;
+  ts: number;
+};
+
+export function upsertCursor(c: Omit<Cursor, "ts">): void {
+  const db = getDb();
+  db.prepare(
+    `INSERT INTO cursors (room, identity, name, x, y, ts)
+     VALUES (?, ?, ?, ?, ?, strftime('%s','now') * 1000)
+     ON CONFLICT(room, identity) DO UPDATE SET x = excluded.x, y = excluded.y, name = excluded.name, ts = excluded.ts`
+  ).run(c.room, c.identity, c.name ?? null, c.x, c.y);
+}
+
+export function listRecentCursors(room: string, maxAgeMs = 8000): Cursor[] {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT * FROM cursors WHERE room = ? AND ts >= ? ORDER BY ts DESC`
+    )
+    .all(room, Date.now() - maxAgeMs) as Cursor[];
+}
+
+export function clearStaleCursors(room: string, maxAgeMs = 30000): void {
+  const db = getDb();
+  db.prepare(`DELETE FROM cursors WHERE room = ? AND ts < ?`).run(room, Date.now() - maxAgeMs);
+}
+
+// === Spatial positions ===
+export type SpatialPosition = {
+  room: string;
+  identity: string;
+  x: number;
+  y: number;
+  updated_at: number;
+};
+
+export function setSpatialPosition(room: string, identity: string, x: number, y: number): void {
+  const db = getDb();
+  db.prepare(
+    `INSERT INTO spatial_positions (room, identity, x, y) VALUES (?, ?, ?, ?)
+     ON CONFLICT(room, identity) DO UPDATE SET x = excluded.x, y = excluded.y, updated_at = strftime('%s','now') * 1000`
+  ).run(room, identity, Math.max(-1, Math.min(1, x)), Math.max(-1, Math.min(1, y)));
+}
+
+export function listSpatialPositions(room: string): SpatialPosition[] {
+  const db = getDb();
+  return db.prepare(`SELECT * FROM spatial_positions WHERE room = ?`).all(room) as SpatialPosition[];
+}
+
+export function clearSpatialPositions(room: string): void {
+  const db = getDb();
+  db.prepare(`DELETE FROM spatial_positions WHERE room = ?`).run(room);
+}
+
+// === Music queue ===
+export type MusicTrack = {
+  id: number;
+  room: string;
+  url: string;
+  title: string;
+  added_by: string;
+  votes: number;
+  played: boolean;
+  created_at: number;
+};
+
+export function addMusicTrack(t: { room: string; url: string; title: string; added_by: string }): MusicTrack {
+  const db = getDb();
+  const info = db
+    .prepare(`INSERT INTO music_queue (room, url, title, added_by) VALUES (?, ?, ?, ?)`)
+    .run(t.room, t.url.slice(0, 500), t.title.slice(0, 200), t.added_by.slice(0, 80));
+  return db.prepare(`SELECT * FROM music_queue WHERE id = ?`).get(info.lastInsertRowid) as MusicTrack;
+}
+
+export function listMusicQueue(room: string, onlyQueued = true): MusicTrack[] {
+  const db = getDb();
+  const sql = onlyQueued
+    ? `SELECT * FROM music_queue WHERE room = ? AND played = 0 ORDER BY votes DESC, created_at ASC`
+    : `SELECT * FROM music_queue WHERE room = ? ORDER BY played ASC, created_at DESC LIMIT 50`;
+  return db.prepare(sql).all(room) as MusicTrack[];
+}
+
+export function voteMusicTrack(id: number, delta: number): void {
+  const db = getDb();
+  db.prepare(`UPDATE music_queue SET votes = MAX(0, votes + ?) WHERE id = ?`).run(delta, id);
+}
+
+export function markMusicPlayed(id: number): void {
+  const db = getDb();
+  db.prepare(`UPDATE music_queue SET played = 1 WHERE id = ?`).run(id);
+}
+
+export function removeMusicTrack(id: number): void {
+  const db = getDb();
+  db.prepare(`DELETE FROM music_queue WHERE id = ?`).run(id);
+}
+
+// === Trivia ===
+export type TriviaRound = {
+  id: number;
+  room: string;
+  question: string;
+  options: string[];
+  correct_index: number;
+  category: string | null;
+  created_by: string;
+  created_at: number;
+};
+
+export function addTriviaRound(r: Omit<TriviaRound, "id" | "created_at">): TriviaRound {
+  const db = getDb();
+  const info = db
+    .prepare(
+      `INSERT INTO trivia_rounds (room, question, options, correct_index, category, created_by)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    )
+    .run(r.room, r.question, JSON.stringify(r.options), r.correct_index, r.category ?? null, r.created_by);
+  return db.prepare(`SELECT * FROM trivia_rounds WHERE id = ?`).get(info.lastInsertRowid) as TriviaRound;
+}
+
+export function listTriviaRounds(room: string, limit = 30): TriviaRound[] {
+  const db = getDb();
+  const rows = db
+    .prepare(`SELECT * FROM trivia_rounds WHERE room = ? ORDER BY created_at DESC LIMIT ?`)
+    .all(room, limit) as Array<Omit<TriviaRound, "options"> & { options: string }>;
+  return rows.map((r) => ({ ...r, options: JSON.parse(r.options) }));
+}
+
+export function answerTrivia(args: {
+  round_id: number;
+  identity: string;
+  name: string;
+  answer_index: number;
+  correct: boolean;
+  score: number;
+  response_ms: number;
+}): void {
+  const db = getDb();
+  db.prepare(
+    `INSERT INTO trivia_answers (round_id, identity, name, answer_index, correct, score, response_ms)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(round_id, identity) DO UPDATE SET answer_index = excluded.answer_index, correct = excluded.correct, score = excluded.score, response_ms = excluded.response_ms`
+  ).run(args.round_id, args.identity, args.name, args.answer_index, args.correct ? 1 : 0, args.score, args.response_ms);
+}
+
+export function triviaLeaderboard(room: string, sinceMs = 0): Array<{ identity: string; name: string | null; total_score: number; correct: number; rounds: number }> {
+  const db = getDb();
+  return db
+    .prepare(
+      `SELECT a.identity, a.name, SUM(a.score) as total_score, SUM(a.correct) as correct, COUNT(*) as rounds
+       FROM trivia_answers a
+       JOIN trivia_rounds r ON r.id = a.round_id
+       WHERE r.room = ? AND r.created_at >= ?
+       GROUP BY a.identity ORDER BY total_score DESC LIMIT 20`
+    )
+    .all(room, sinceMs) as any;
+}
+
+export function triviaRoundResults(roundId: number): Array<{ identity: string; name: string | null; answer_index: number; score: number; response_ms: number }> {
+  const db = getDb();
+  return db
+    .prepare(`SELECT identity, name, answer_index, score, response_ms FROM trivia_answers WHERE round_id = ? ORDER BY score DESC, response_ms ASC`)
+    .all(roundId) as any;
+}
+
+// === Word cloud poll responses ===
+export type WordCloudEntry = { word: string; count: number };
+
+export function addWordCloudResponse(pollId: string, identity: string, word: string): void {
+  const db = getDb();
+  const w = word.trim().toLowerCase().slice(0, 80);
+  if (!w) return;
+  db.prepare(`INSERT INTO word_cloud_responses (poll_id, identity, word) VALUES (?, ?, ?)`).run(pollId, identity.slice(0, 80), w);
+}
+
+export function wordCloudResults(pollId: string): WordCloudEntry[] {
+  const db = getDb();
+  return db
+    .prepare(`SELECT word, COUNT(*) as count FROM word_cloud_responses WHERE poll_id = ? GROUP BY word ORDER BY count DESC LIMIT 60`)
+    .all(pollId) as WordCloudEntry[];
+}
+
+// === Bingo ===
+export type BingoCard = {
+  id: number;
+  room: string;
+  identity: string;
+  name: string | null;
+  phrases: string[];
+  marks: boolean[];
+  has_bingo: boolean;
+  completed_at: number | null;
+  created_at: number;
+};
+
+const BINGO_PHRASE_BANK = [
+  "Can you hear me?", "Let's circle back", "As per my last email", "Synergy", "Touch base",
+  "Move the needle", "Low-hanging fruit", "Bandwidth", "Pivot", "Deep dive",
+  "Take it offline", "Boil the ocean", "Open the kimono", "Drink from the firehose",
+  "Best practice", "Value-add", "Action item", "Stakeholder", "Deliverable",
+  "Quick win", "Going forward", "On the same page", "Ping me", "Loop in",
+  "Ducks in a row", "Net-net", "Push back", "Vertical", "Horizontal",
+  "Holistic", "Granular", "Robust", "Scalable", "Idiomatic",
+  "Heads up", "FYI", "TL;DR", "TLDR", "Hope this helps",
+  "Per my last message", "Friendly reminder", "Just a heads up", "Following up",
+  "Sorry for the late reply", "Agreed", "Sounds good", "Will do", "Noted",
+  "Thanks!", "Awesome", "Cool", "Perfect", "Great catch",
+];
+
+function shuffle<T>(arr: T[]): T[] {
+  const out = arr.slice();
+  for (let i = out.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
+export function generateBingoCard(room: string, identity: string, name?: string): BingoCard {
+  const db = getDb();
+  const existing = db.prepare(`SELECT * FROM bingo_cards WHERE room = ? AND identity = ?`).get(room, identity) as BingoCard | undefined;
+  if (existing) return existing;
+
+  const phrases = shuffle(BINGO_PHRASE_BANK).slice(0, 24);
+  const marks = new Array(25).fill(false);
+  marks[12] = true; // center free
+  const info = db
+    .prepare(`INSERT INTO bingo_cards (room, identity, name, phrases, marks) VALUES (?, ?, ?, ?, ?)`)
+    .run(room, identity.slice(0, 80), name?.slice(0, 80) ?? null, JSON.stringify(phrases), JSON.stringify(marks));
+  return db.prepare(`SELECT * FROM bingo_cards WHERE id = ?`).get(info.lastInsertRowid) as BingoCard;
+}
+
+export function getBingoCard(room: string, identity: string): BingoCard | null {
+  const db = getDb();
+  const row = db.prepare(`SELECT * FROM bingo_cards WHERE room = ? AND identity = ?`).get(room, identity) as BingoCard | undefined;
+  if (!row) return null;
+  return { ...row, phrases: JSON.parse(row.phrases as any), marks: JSON.parse(row.marks as any) };
+}
+
+export function toggleBingoMark(room: string, identity: string, index: number): BingoCard | null {
+  const card = getBingoCard(room, identity);
+  if (!card) return null;
+  if (index < 0 || index >= 25) return card;
+  const marks = card.marks.slice();
+  marks[index] = !marks[index];
+  const hasBingo = checkBingo(marks) ? 1 : 0;
+  const db = getDb();
+  db.prepare(`UPDATE bingo_cards SET marks = ?, has_bingo = ?, completed_at = CASE WHEN ? = 1 AND completed_at IS NULL THEN strftime('%s','now') * 1000 ELSE completed_at END WHERE room = ? AND identity = ?`)
+    .run(JSON.stringify(marks), hasBingo, hasBingo, room, identity);
+  return getBingoCard(room, identity);
+}
+
+export function autoMarkBingo(room: string, identity: string, phrase: string): { card: BingoCard; newlyMarked: boolean } | null {
+  const card = getBingoCard(room, identity);
+  if (!card) return null;
+  const idx = card.phrases.findIndex((p) => p.toLowerCase() === phrase.toLowerCase());
+  if (idx === -1 || card.marks[idx]) return null;
+  const marks = card.marks.slice();
+  marks[idx] = true;
+  const hasBingo = checkBingo(marks) ? 1 : 0;
+  const db = getDb();
+  db.prepare(`UPDATE bingo_cards SET marks = ?, has_bingo = ?, completed_at = CASE WHEN ? = 1 AND completed_at IS NULL THEN strftime('%s','now') * 1000 ELSE completed_at END WHERE room = ? AND identity = ?`)
+    .run(JSON.stringify(marks), hasBingo, hasBingo, room, identity);
+  return { card: getBingoCard(room, identity)!, newlyMarked: true };
+}
+
+export function bingoLeaderboard(room: string): Array<{ identity: string; name: string | null; has_bingo: boolean; completed_at: number | null; marks: number }> {
+  const db = getDb();
+  return db.prepare(`SELECT identity, name, has_bingo, completed_at, marks FROM bingo_cards WHERE room = ? ORDER BY has_bingo DESC, completed_at ASC LIMIT 20`).all(room) as any;
+}
+
+function checkBingo(marks: boolean[]): boolean {
+  // 5x5 grid; check rows, cols, diagonals
+  for (let r = 0; r < 5; r++) {
+    if ([0, 1, 2, 3, 4].every((c) => marks[r * 5 + c])) return true;
+  }
+  for (let c = 0; c < 5; c++) {
+    if ([0, 1, 2, 3, 4].every((r) => marks[r * 5 + c])) return true;
+  }
+  if ([0, 6, 12, 18, 24].every((i) => marks[i])) return true;
+  if ([4, 8, 12, 16, 20].every((i) => marks[i])) return true;
+  return false;
+}
+
+// === Recaps ===
+export type Recap = {
+  room: string;
+  summary: string;
+  action_items: string;
+  decisions: string;
+  highlights: string;
+  participants: string;
+  duration_ms: number;
+  generated_at: number;
+};
+
+export function saveRecap(r: Omit<Recap, "generated_at">): Recap {
+  const db = getDb();
+  db.prepare(
+    `INSERT INTO recaps (room, summary, action_items, decisions, highlights, participants, duration_ms)
+     VALUES (?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(room) DO UPDATE SET summary = excluded.summary, action_items = excluded.action_items, decisions = excluded.decisions, highlights = excluded.highlights, participants = excluded.participants, duration_ms = excluded.duration_ms, generated_at = strftime('%s','now') * 1000`
+  ).run(r.room, r.summary, r.action_items, r.decisions, r.highlights, r.participants, r.duration_ms);
+  return getRecap(r.room)!;
+}
+
+export function getRecap(room: string): Recap | null {
+  const db = getDb();
+  return (db.prepare(`SELECT * FROM recaps WHERE room = ?`).get(room) as Recap) ?? null;
 }
