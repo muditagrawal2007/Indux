@@ -31,8 +31,11 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Admins get full publish/subscribe + admin powers
-    // Non-admins in a locked room get lobby mode: canSubscribe=true, canPublish=false
+    // Everyone who joins gets publish + subscribe by default. The lobby
+    // (waiting room) feature is enforced via room.metadata on the server
+    // side, not by restricting publish at token-mint time — otherwise
+    // regular joiners can't share their camera/mic, which defeats the
+    // purpose of a video meeting.
     const admin = !!isAdmin;
     const at = new AccessToken(apiKey, apiSecret, {
       identity,
@@ -43,7 +46,7 @@ export async function POST(req: NextRequest) {
     at.addGrant({
       roomJoin: true,
       room,
-      canPublish: admin,
+      canPublish: true,
       canSubscribe: true,
       canPublishData: true, // chat always works
       roomAdmin: admin,
