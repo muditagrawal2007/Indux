@@ -89,7 +89,6 @@ export const Icon = {
 
   // Charts / polls
   BarChart: (p: IconProps) => <Base {...p}><line x1="12" y1="20" x2="12" y2="10" /><line x1="18" y1="20" x2="18" y2="4" /><line x1="6" y1="20" x2="6" y2="16" /></Base>,
-  TrendingUp: (p: IconProps) => <Base {...p}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></Base>,
 
   // Recording
   Record: (p: IconProps) => <Base {...p}><circle cx="12" cy="12" r="8" fill="currentColor" /></Base>,
@@ -126,6 +125,10 @@ export const Icon = {
   // Help
   Help: (p: IconProps) => <Base {...p}><circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><line x1="12" y1="17" x2="12.01" y2="17" /></Base>,
   Keyboard: (p: IconProps) => <Base {...p}><rect x="2" y="6" width="20" height="12" rx="2" /><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M6 14h.01M18 14h.01M10 14h4" /></Base>,
+
+  // Live presence
+  Cursor: (p: IconProps) => <Base {...p}><path d="M5 3l5 16 2.5-6.5L19 10 5 3z" /></Base>,
+  TrendingUp: (p: IconProps) => <Base {...p}><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></Base>,
 };
 
 // Standard close icon (Unicode multiplication sign × U+00D7) — non-symbol substitute

@@ -600,19 +600,20 @@ kbd {
   display: inline-flex;
   align-items: center;
   gap: 0.375rem;
-  padding: 0.25rem 0.75rem;
+  padding: 0.3125rem 0.75rem;
   border-radius: var(--radius);
   font-size: 0.75rem;
   font-weight: 500;
-  color: var(--text-secondary);
-  background: var(--bg-elevated);
-  border: 1px solid var(--border);
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   transition: all var(--duration) var(--ease);
+  backdrop-filter: blur(8px);
 }
 .header-btn:hover {
-  background: var(--bg-sunken);
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.18);
   color: var(--text-primary);
-  border-color: var(--border-strong);
 }
 
 .header-btn-accent {
@@ -650,4 +651,80 @@ kbd {
 .mobile-menu-item:hover {
   background: var(--bg-sunken);
   color: var(--text-primary);
+}
+
+/* === AR / Matrix / fire-breath keyframes === */
+@keyframes matrix-col {
+  0% { transform: translateY(-100%); opacity: 0; }
+  10% { opacity: 1; }
+  100% { transform: translateY(100vh); opacity: 0; }
+}
+@keyframes ar-fire-0 { 0% { transform: translate(0, 0) scaleX(1); opacity: 0.9; } 100% { transform: translate(40px, -10px) scaleX(2.5); opacity: 0; } }
+@keyframes ar-fire-1 { 0% { transform: translate(0, 0) scaleX(1); opacity: 0.95; } 100% { transform: translate(60px, -20px) scaleX(2.8); opacity: 0; } }
+@keyframes ar-fire-2 { 0% { transform: translate(0, 0) scaleX(1); opacity: 0.85; } 100% { transform: translate(80px, -15px) scaleX(3); opacity: 0; } }
+@keyframes ar-fire-3 { 0% { transform: translate(0, 0) scaleX(1); opacity: 0.7; } 100% { transform: translate(100px, -8px) scaleX(3.2); opacity: 0; } }
+@keyframes ar-fire-4 { 0% { transform: translate(0, 0) scaleX(1); opacity: 0.6; } 100% { transform: translate(120px, -25px) scaleX(3.5); opacity: 0; } }
+
+/* === Floating reactions === */
+@keyframes reaction-float {
+  0%   { opacity: 0; transform: translateY(0) scale(0.5); }
+  15%  { opacity: 1; transform: translateY(-30px) scale(1.2); }
+  30%  { transform: translateY(-60px) scale(1); }
+  100% { opacity: 0; transform: translateY(-300px) scale(0.6) rotate(20deg); }
+}
+.reaction-float {
+  animation: reaction-float 3.5s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+/* === Ripple click effect === */
+@keyframes ripple {
+  0%   { transform: scale(0); opacity: 0.5; }
+  100% { transform: scale(4); opacity: 0; }
+}
+.ripple-effect::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: currentColor;
+  opacity: 0.25;
+  animation: ripple 0.6s ease-out;
+  pointer-events: none;
+}
+
+/* === Pulse halo === */
+@keyframes pulse-halo {
+  0%   { transform: scale(0.95); opacity: 0.7; }
+  100% { transform: scale(1.6); opacity: 0; }
+}
+.pulse-halo {
+  position: relative;
+}
+.pulse-halo::after {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  border: 2px solid currentColor;
+  animation: pulse-halo 1.6s ease-out infinite;
+  pointer-events: none;
+}
+
+/* === Glow spotlight === */
+@keyframes glow-spotlight {
+  0%, 100% { box-shadow: 0 0 18px rgba(252, 211, 77, 0.4); }
+  50%      { box-shadow: 0 0 32px rgba(252, 211, 77, 0.7); }
+}
+.glow-spotlight {
+  animation: glow-spotlight 2.4s ease-in-out infinite;
+}
+
+/* === Activity ticker slide === */
+@keyframes ticker-in {
+  0%   { opacity: 0; transform: translateX(-12px); }
+  100% { opacity: 1; transform: translateX(0); }
+}
+.ticker-in {
+  animation: ticker-in 320ms ease-out;
 }
