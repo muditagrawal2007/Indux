@@ -86,27 +86,18 @@ export function FloatingReactions({ roomId, identity }: { roomId: string; identi
       {reactions.map((r) => (
         <div
           key={r.id}
-          className="absolute bottom-16 flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium shadow-lg backdrop-blur"
+          className="reaction-float absolute bottom-16 flex items-center gap-1 rounded-full px-3 py-1 text-xs font-medium shadow-lg backdrop-blur"
           style={{
             left: `${r.x}%`,
             background: `${r.color}22`,
             color: r.color,
             border: `1px solid ${r.color}33`,
-            animation: "reaction-float 3.5s ease-out forwards",
           }}
         >
           <Reaction kind={r.kind as "thumbs" | "clap" | "heart" | "laugh" | "fire" | "party"} />
           <span>{r.label}</span>
         </div>
       ))}
-      <style jsx>{`
-        @keyframes reaction-float {
-          0% { opacity: 0; transform: translateY(0) scale(0.5); }
-          15% { opacity: 1; transform: translateY(-30px) scale(1.2); }
-          30% { transform: translateY(-60px) scale(1); }
-          100% { opacity: 0; transform: translateY(-300px) scale(0.6) rotate(20deg); }
-        }
-      `}</style>
     </div>
   );
 }

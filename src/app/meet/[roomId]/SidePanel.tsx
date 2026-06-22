@@ -31,31 +31,32 @@ export function SidePanel({
     { id: "notes",  icon: <Icon.FileText size={13} />,       label: "Notes" },
   ];
   return (
-    <aside className="animate-slideInR relative flex h-full w-[380px] max-w-[85vw] shrink-0 flex-col border-l border-white/10 bg-[#16161e]/95 shadow-2xl backdrop-blur-2xl overflow-hidden">
+    <aside className="animate-slideInR relative flex h-full w-[400px] max-w-[88vw] shrink-0 flex-col border-l border-white/[0.06] bg-gradient-to-b from-[#15151c]/95 to-[#0e0e14]/95 shadow-[-12px_0_40px_rgba(0,0,0,0.6)] backdrop-blur-2xl overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-0.5 border-b border-white/10 px-2 py-2.5">
+      <div className="flex items-center gap-0.5 border-b border-white/[0.06] bg-black/15 px-2 py-2.5">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => onChangeTab(t.id)}
             className={
-              "flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium transition-all duration-150 " +
+              "group relative flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[12px] font-medium transition-all duration-150 " +
               (tab === t.id
-                ? "bg-white/10 text-white"
-                : "text-white/40 hover:text-white/70 hover:bg-white/5")
+                ? "bg-white/[0.08] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.06)]"
+                : "text-white/45 hover:text-white/80 hover:bg-white/[0.04]")
             }
           >
-            {t.icon}
+            <span className={tab === t.id ? "text-white/90" : "text-white/50 group-hover:text-white/70"}>{t.icon}</span>
             <span className="hidden sm:inline">{t.label}</span>
+            {tab === t.id && (
+              <span className="absolute -bottom-2.5 left-2 right-2 h-0.5 rounded-full bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+            )}
           </button>
         ))}
         <div className="flex-1" />
-        <button onClick={onClose} className="rounded-lg p-1.5 text-white/40 hover:bg-white/5 hover:text-white/70 transition-colors" aria-label="Close panel">
+        <button onClick={onClose} className="rounded-lg p-1.5 text-white/40 hover:bg-white/[0.06] hover:text-white/80 transition-colors" aria-label="Close panel">
           <Icon.Close size={14} />
         </button>
       </div>
-      {/* pb-24 leaves room above the floating bottom toolbar so the chat
-          input / poll composer doesn't get hidden behind it. */}
       <div className="flex-1 overflow-hidden pb-20">
         {tab === "chat"   && <ChatTab roomId={roomId} identity={identity} userName={userName} />}
         {tab === "people" && <ParticipantsPanel roomId={roomId} isAdmin={isAdmin} identity={identity} />}
@@ -101,9 +102,21 @@ function ChatTab({ roomId, identity, userName }: { roomId: string; identity: str
   }
 
   useEffect(() => {
-    refresh(true);
-    const t = setInterval(() => refresh(false), 3000);
-    return () => clearInterval(t);
+    let cancelled = false;
+    let timeoutId: any = null;
+
+    async function tick() {
+      if (document.hidden || cancelled) {
+        timeoutId = setTimeout(tick, 6000);
+        return;
+      }
+      const wasInit = initializedRef.current;
+      await refresh(!wasInit);
+      if (!cancelled) timeoutId = setTimeout(tick, 4000);
+    }
+
+    tick();
+    return () => { cancelled = true; if (timeoutId) clearTimeout(timeoutId); };
   }, [roomId]);
 
   useEffect(() => {
@@ -162,35 +175,48 @@ function ChatTab({ roomId, identity, userName }: { roomId: string; identity: str
 
   return (
     <div className="flex h-full flex-col">
-      <div ref={listRef} className="flex-1 space-y-1 overflow-y-auto p-3 text-sm">
+      <div ref={listRef} className="flex-1 space-y-2 overflow-y-auto p-3 text-sm">
         {msgs.length === 0 && (
-          <p className="py-12 text-center text-xs text-white/30">
-            No messages yet. Say hi.
-          </p>
+          <div className="py-16 text-center">
+            <div className="mx-auto mb-3 grid h-12 w-12 place-items-center rounded-full bg-white/[0.04]">
+              <Icon.MessageSquare size={20} className="text-white/30" />
+            </div>
+            <p className="text-xs text-white/40">No messages yet</p>
+            <p className="mt-0.5 text-[10px] text-white/25">Be the first to say hi</p>
+          </div>
         )}
-        {msgs.map((m) => {
+        {msgs.map((m, idx) => {
           let reactions: Record<string, string[]> = {};
           try {
             const meta = m.meta ? JSON.parse(m.meta) : {};
             reactions = meta.reactions ?? {};
           } catch {}
           const msgReactions = reactions[String(m.id)] ?? [];
+          const prev = msgs[idx - 1];
+          const grouped = prev && prev.identity === m.identity && (m.created_at - prev.created_at) < 60_000;
           return (
             <div
               key={m.id}
               className={
-                "group relative break-words rounded-lg px-3 py-2 transition-colors " +
-                (m._pending ? "opacity-60" : "") +
-                (m._failed ? " border border-red-500/40 bg-red-500/5" : " hover:bg-white/[0.04]")
+                "group relative break-words rounded-xl px-3 py-2 transition-all " +
+                (m._pending ? "opacity-50" : "") +
+                (m._failed ? " border border-red-500/30 bg-red-500/5" : " hover:bg-white/[0.05]") +
+                " " +
+                (grouped ? "" : "mt-2.5")
               }
             >
-              <div className="flex items-baseline gap-2">
-                <span className="text-[11px] font-semibold text-white/80">{m.name || m.identity}</span>
-                <span className="text-[10px] text-white/30">
-                  {new Date(m.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                </span>
-              </div>
-              <div className="mt-0.5 text-[13px] leading-relaxed text-white/80">{m.body}</div>
+              {!grouped && (
+                <div className="mb-1 flex items-baseline gap-2">
+                  <span className="text-[12px] font-semibold text-white/85">{m.name || m.identity}</span>
+                  <span className="text-[10px] text-white/30" suppressHydrationWarning>
+                    {new Date(m.created_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
+                  </span>
+                  {m._pending && (
+                    <span className="text-[9px] uppercase tracking-wide text-white/30">sending…</span>
+                  )}
+                </div>
+              )}
+              <div className="text-[13px] leading-relaxed text-white/90">{m.body}</div>
               {msgReactions.length > 0 && (
                 <div className="mt-1">
                   <MessageReactions
@@ -226,20 +252,28 @@ function ChatTab({ roomId, identity, userName }: { roomId: string; identity: str
       </div>
       <form
         onSubmit={(e) => { e.preventDefault(); send(); }}
-        className="flex items-center gap-2 border-t border-white/10 bg-[#0f0f14]/80 p-3 backdrop-blur"
+        className="flex items-center gap-2 border-t border-white/[0.06] bg-[#0d0d14]/85 p-3 backdrop-blur-xl"
       >
         <input
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Type a message..."
-          className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all"
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              send();
+            }
+          }}
+          placeholder="Message everyone…"
+          className="flex-1 rounded-full border border-white/[0.08] bg-white/[0.06] px-4 py-2.5 text-[13px] text-white placeholder:text-white/30 focus:border-white/20 focus:bg-white/[0.08] focus:outline-none transition-all"
         />
         <button
           type="submit"
-          className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/10 text-white/70 hover:bg-white/20 hover:text-white transition-all disabled:opacity-30"
+          className="group flex h-10 w-10 items-center justify-center rounded-full text-white shadow-md transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:scale-100 disabled:shadow-none"
+          style={{ background: "linear-gradient(135deg, var(--accent), #a855f7)" }}
           disabled={!text.trim()}
+          aria-label="Send"
         >
-          <Icon.Send size={16} />
+          <Icon.Send size={14} />
         </button>
       </form>
     </div>
@@ -407,7 +441,7 @@ function NotesTab({ roomId, identity, userName }: { roomId: string; identity: st
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between border-b border-white/10 px-3 py-1.5 text-[10px] text-white/40">
-        <span>{savedAt ? `Saved ${new Date(savedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Not saved yet"}</span>
+        <span suppressHydrationWarning>{savedAt ? `Saved ${new Date(savedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}` : "Not saved yet"}</span>
         <span>{body.length} chars</span>
       </div>
       <textarea
