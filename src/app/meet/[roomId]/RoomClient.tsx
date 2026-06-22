@@ -2,12 +2,13 @@
 
 // Main meeting room client — clean custom UI
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import {
   LiveKitRoom,
   RoomAudioRenderer,
   useLocalParticipant,
 } from "@livekit/components-react";
+import { Room as LKRoom, Track } from "livekit-client";
 import dynamic from "next/dynamic";
 import "@livekit/components-styles";
 import { MeetingHeader } from "./MeetingHeader";
@@ -24,8 +25,24 @@ import { Icon } from "../../components/Icons";
 import { CustomPreJoin } from "./CustomPreJoin";
 import { CustomVideoGrid } from "./CustomVideoGrid";
 import { LobbyScreen } from "./Lobby";
+import { AISidekick } from "./AISidekick";
+import { EngagementDashboard } from "./EngagementDashboard";
+import { CursorPresence } from "./CursorPresence";
+import { ConfettiCanvas } from "./Confetti";
+import { fireConfetti } from "./Confetti";
+import { sfx, isSfxEnabled } from "./sfx";
+import { SpatialVoiceRoom } from "./SpatialVoiceRoom";
+import { MusicRoom } from "./MusicRoom";
+import { Trivia } from "./Trivia";
+import { ARFilters, ARFilterPicker, type FilterKind } from "./ARFilters";
+import { TranslatedCaptions } from "./TranslatedCaptions";
+import { Bingo } from "./Bingo";
+import { RecapModal } from "./RecapModal";
+import { ActivityTicker } from "./ActivityTicker";
+import type { LocalTrack, RemoteTrack } from "livekit-client";
 
-type Tab = "chat" | "people" | "polls" | "qa" | "notes" | null;
+type Tab = "chat" | "people" | "polls" | "qa" | "notes" | "ai" | null;
+export type RoomTab = NonNullable<Tab>;
 
 const AdminPanel = dynamic(() => import("./AdminPanel").then((m) => m.AdminPanel), { ssr: false });
 const SettingsPanel = dynamic(() => import("./Settings").then((m) => m.SettingsPanel), { ssr: false });
@@ -151,6 +168,7 @@ export function RoomClient({ roomId, identity, isAdmin: initialIsAdmin, isEmbed,
 }
 
 function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomId: string; isAdmin: boolean; userName: string; onLeave: () => void; isEmbed: boolean; bgMode: "none" | "blur" }) {
+  const { localParticipant } = useLocalParticipant();
   const [roomState, setRoomState] = useState<any>({ participants: [] });
   const [recording, setRecording] = useState(false);
   const [viewMode, setViewMode] = useState<"tile" | "stage">("tile");
@@ -164,11 +182,23 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
   const [showAdmin, setShowAdmin] = useState(false);
   const [showShare, setShowShare] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [showEngagement, setShowEngagement] = useState(false);
+  const [showSpatial, setShowSpatial] = useState(false);
+  const [showMusic, setShowMusic] = useState(false);
+  const [showTrivia, setShowTrivia] = useState(false);
+  const [showBingo, setShowBingo] = useState(false);
+  const [showRecap, setShowRecap] = useState(false);
   const [inLobby, setInLobby] = useState(false);
   const [background, setBackground] = useState<"none" | "blur" | "sunset" | "office" | "forest" | "beach">(bgMode);
   const [touchUp, setTouchUp] = useState(false);
   const [spotlightSid, setSpotlightSid] = useState<string | null>(null);
   const [captionsOn, setCaptionsOn] = useState(false);
+  const [insights, setInsights] = useState<any[]>([]);
+  const [arFilter, setArFilter] = useState<FilterKind>("none");
+  const [selfStream, setSelfStream] = useState<MediaStream | null>(null);
+
+  // Get the underlying LiveKit Room object from the local participant
+  const lkRoom: LKRoom | null = (localParticipant as any)?.room ?? null;
 
   useEffect(() => {
     if (!roomState.participants?.length || !userName) { setInLobby(false); return; }
@@ -178,21 +208,84 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
     setInLobby(cantPublish && !!roomState.locked);
   }, [roomState, userName]);
 
+  // Consolidated polling — one interval, multiple endpoints, pauses when tab hidden.
+  const previousCountRef = useRef(0);
   useEffect(() => {
     let cancelled = false;
-    async function refresh() {
+    let timeoutId: any = null;
+
+    async function poll() {
+      if (document.hidden) {
+        if (!cancelled) timeoutId = setTimeout(poll, 8000);
+        return;
+      }
       try {
-        const [roomRes, partsRes] = await Promise.all([
-          fetch(`/api/rooms/${roomId}`).then((r) => r.json()),
-          fetch(`/api/rooms/${roomId}/participants`).then((r) => r.json()),
+        const [roomRes, partsRes, insightsRes] = await Promise.all([
+          fetch(`/api/rooms/${roomId}`).then((r) => r.json()).catch(() => null),
+          fetch(`/api/rooms/${roomId}/participants`).then((r) => r.json()).catch(() => null),
+          fetch(`/api/rooms/${roomId}/ai/insights?only=open`).then((r) => r.json()).catch(() => null),
         ]);
         if (cancelled) return;
-        setRoomState({ locked: roomRes.room?.metadata?.locked === true, participants: partsRes.participants ?? [] });
+        const newParts = partsRes?.participants ?? [];
+        const prev = previousCountRef.current;
+        setRoomState((cur: any) => {
+          // Shallow compare to avoid useless re-renders
+          if (cur.locked === (roomRes?.room?.metadata?.locked === true) &&
+              cur.participants.length === newParts.length &&
+              cur.participants.every((p: any, i: number) => p.sid === newParts[i]?.sid)) {
+            return cur;
+          }
+          return { locked: roomRes?.room?.metadata?.locked === true, participants: newParts };
+        });
+        if (insightsRes?.insights) setInsights(insightsRes.insights);
+
+        // Sound + confetti on join milestones
+        if (isSfxEnabled() && newParts.length !== prev) {
+          if (newParts.length > prev && prev > 0) {
+            sfx.join();
+            if ([5, 10, 25, 50, 100].includes(newParts.length)) {
+              setTimeout(() => { sfx.confetti(); fireConfetti("center", { count: 140, palette: "rainbow" }); }, 50);
+            }
+          } else if (newParts.length < prev && prev > 1) {
+            sfx.leave();
+          }
+          // Engagement events
+          fetch(`/api/rooms/${roomId}/engagement`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              identity: userName,
+              events: newParts.length > prev
+                ? [{ kind: "join", ts: Date.now() }]
+                : [{ kind: "leave", ts: Date.now() }],
+            }),
+          }).catch(() => {});
+        }
+        previousCountRef.current = newParts.length;
       } catch {}
+      if (!cancelled) timeoutId = setTimeout(poll, 4000);
     }
-    refresh();
-    const t = setInterval(refresh, 3000);
-    return () => { cancelled = true; clearInterval(t); };
+
+    poll();
+    return () => { cancelled = true; if (timeoutId) clearTimeout(timeoutId); };
+  }, [roomId, userName]);
+
+  const resolveInsight = useCallback(async (id: number) => {
+    if (!id) {
+      // refresh signal
+      try {
+        const r = await fetch(`/api/rooms/${roomId}/ai/insights?only=open`);
+        const d = await r.json();
+        setInsights(d.insights ?? []);
+      } catch {}
+      return;
+    }
+    setInsights((arr) => arr.map((i) => (i.id === id ? { ...i, resolved: true } : i)));
+    await fetch(`/api/rooms/${roomId}/ai/insights`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "resolve", id }),
+    }).catch(() => {});
   }, [roomId]);
 
   useEffect(() => {
@@ -202,12 +295,25 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       const k = e.key.toLowerCase();
       if (k === "?") setShowShortcuts(true);
-      else if (k === "escape") { setShowShortcuts(false); setSidebarTab(null); }
+      else if (k === "escape") {
+        setShowShortcuts(false);
+        setSidebarTab(null);
+        setShowEngagement(false);
+        setShowSpatial(false);
+        setShowMusic(false);
+        setShowTrivia(false);
+      }
       else if (k === "c") setSidebarTab((t) => (t === "chat" ? null : "chat"));
       else if (k === "p") setSidebarTab((t) => (t === "people" ? null : "people"));
       else if (k === "l") setSidebarTab((t) => (t === "polls" ? null : "polls"));
       else if (k === "q") setSidebarTab((t) => (t === "qa" ? null : "qa"));
       else if (k === "n") setSidebarTab((t) => (t === "notes" ? null : "notes"));
+      else if (k === "i") setShowEngagement(true);
+      else if (k === "x") setShowSpatial((s) => !s);
+      else if (k === "m") setShowMusic((s) => !s);
+      else if (k === "t") setShowTrivia((s) => !s);
+      else if (k === "g") setShowBingo((s) => !s);
+      else if (k === "y") setShowRecap(true);
       else if (k === "w") setShowWhiteboard(true);
       else if (k === "s" && isAdmin) setShowSettings(true);
       else if (k === "r") {
@@ -216,11 +322,33 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ identity: userName, action: "raise" }),
         });
+        sfx.hand();
       }
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [roomId, userName, isAdmin]);
+
+  // Get local camera stream for AR filters
+  useEffect(() => {
+    if (!localParticipant) return;
+    const camPub = localParticipant.getTrackPublication?.(Track.Source.Camera);
+    const track = camPub?.track as LocalTrack | undefined;
+    const stream = (track as any)?.mediaStream as MediaStream | undefined;
+    if (stream) setSelfStream(stream);
+    const onMuted = () => setSelfStream(null);
+    const onUnmuted = () => {
+      const t = localParticipant.getTrackPublication?.(Track.Source.Camera)?.track;
+      const s = (t as any)?.mediaStream as MediaStream | undefined;
+      if (s) setSelfStream(s);
+    };
+    track?.on("muted", onMuted);
+    track?.on("unmuted", onUnmuted);
+    return () => {
+      track?.off("muted", onMuted);
+      track?.off("unmuted", onUnmuted);
+    };
+  }, [localParticipant]);
 
   if (inLobby) {
     return (
@@ -236,6 +364,16 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
 
   return (
     <div className="relative flex h-full w-full flex-col bg-black text-white">
+      <ConfettiCanvas />
+
+      {/* Live cursor presence overlay */}
+      {!isEmbed && (
+        <CursorPresence roomId={roomId} identity={userName} userName={userName} room={lkRoom} />
+      )}
+
+      {/* Activity ticker — live feed of events */}
+      {!isEmbed && <ActivityTicker roomId={roomId} identity={userName} />}
+
       <HandRaiseToasts roomId={roomId} userName={userName} />
 
       <MeetingHeader
@@ -266,9 +404,64 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
           <FloatingReactions roomId={roomId} identity={userName} />
         </div>
 
+        {/* AI floating launcher */}
+        {!isEmbed && sidebarTab !== "ai" && (
+          <button
+            onClick={() => setSidebarTab("ai")}
+            className="absolute bottom-24 right-3 z-20 group flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-2xl transition-all hover:scale-[1.04] active:scale-[0.97]"
+            style={{
+              background: "linear-gradient(135deg, var(--accent), #a855f7)",
+              boxShadow: "0 8px 24px rgba(99, 102, 241, 0.4), 0 2px 8px rgba(168, 85, 247, 0.3)",
+            }}
+            title="AI Sidekick"
+          >
+            <span className="relative">
+              <Icon.Sparkles size={13} />
+              {insights.filter((i) => !i.resolved).length > 0 && (
+                <span className="absolute -right-2 -top-2 grid h-4 min-w-4 place-items-center rounded-full bg-amber-400 px-1 text-[9px] font-bold text-black animate-pulse">
+                  {insights.filter((i) => !i.resolved).length}
+                </span>
+              )}
+            </span>
+            <span className="hidden sm:inline">Ask Sidekick</span>
+          </button>
+        )}
+
+        {/* Engagement dashboard launcher */}
+        {!isEmbed && (
+          <button
+            onClick={() => setShowEngagement(true)}
+            className="absolute bottom-24 right-3 z-20 group mr-36 sm:mr-44 flex items-center gap-2 rounded-full border border-white/[0.08] bg-black/45 px-3 py-2 text-xs font-medium text-white/85 shadow-lg backdrop-blur-xl transition-all hover:border-white/20 hover:bg-black/65 hover:text-white"
+            title="Engagement (I)"
+          >
+            <Icon.TrendingUp size={13} />
+            <span className="hidden sm:inline">Insights</span>
+          </button>
+        )}
+
+        {/* Fun features launcher cluster — top-right of stage */}
+        {!isEmbed && (
+          <div className="absolute top-16 right-3 z-20 flex flex-col gap-1 animate-fadeIn">
+            <div className="rounded-2xl border border-white/[0.08] bg-black/35 px-1.5 py-2 backdrop-blur-xl shadow-lg">
+              <div className="px-1.5 pb-1.5 mb-1 border-b border-white/[0.06] text-[8px] font-semibold uppercase tracking-[0.18em] text-white/40">
+                Play
+              </div>
+              <div className="flex flex-col gap-1">
+                <FunLaunch icon={<Icon.Volume size={11} />} label="Spatial" hint="X" active={showSpatial} onClick={() => setShowSpatial((s) => !s)} gradient="linear-gradient(135deg, #ec4899, #f59e0b)" />
+                <FunLaunch icon={<span style={{ fontSize: 12 }}>♪</span>} label="Music" hint="M" active={showMusic} onClick={() => setShowMusic((s) => !s)} gradient="linear-gradient(135deg, #ec4899, #a855f7)" />
+                <FunLaunch icon={<Icon.Bolt size={11} />} label="Trivia" hint="T" active={showTrivia} onClick={() => setShowTrivia((s) => !s)} gradient="linear-gradient(135deg, #10b981, #06b6d4)" />
+                <FunLaunch icon={<span style={{ fontSize: 11, fontWeight: 700 }}>B</span>} label="Bingo" hint="G" active={showBingo} onClick={() => setShowBingo((s) => !s)} gradient="linear-gradient(135deg, #f97316, #facc15)" />
+              </div>
+              <div className="mt-1.5 pt-1.5 border-t border-white/[0.06]">
+                <FunLaunch icon={<Icon.FileText size={11} />} label="Recap" hint="Y" active={showRecap} onClick={() => setShowRecap(true)} gradient="linear-gradient(135deg, #6366f1, #a855f7)" />
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* View toggle — floating bottom-right of toolbar */}
         {!isEmbed && (
-          <div className="absolute right-3 bottom-24 z-20">
+          <div className="absolute right-3 bottom-44 z-20">
             <ViewToggle view={viewMode} onViewChange={setViewMode} />
           </div>
         )}
@@ -296,13 +489,25 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
                 <Icon.Keyboard size={10} />
               </button>
               <LiveCaptions enabled={captionsOn} setEnabled={setCaptionsOn} />
+              {!isEmbed && <TranslatedCaptions roomId={roomId} identity={userName} />}
               <NetworkStats />
             </>
           )}
         </div>
 
         {/* Side panel — OVERLAYS on top of the video grid */}
-        {sidebarTab && (
+        {sidebarTab === "ai" ? (
+          <div className="absolute inset-y-0 right-0 z-30 flex">
+            <AISidekick
+              roomId={roomId}
+              identity={userName}
+              userName={userName}
+              onClose={() => setSidebarTab(null)}
+              insights={insights}
+              onResolveInsight={resolveInsight}
+            />
+          </div>
+        ) : sidebarTab ? (
           <div className="absolute inset-y-0 right-0 z-30 flex">
             <SidePanel
               roomId={roomId}
@@ -314,7 +519,7 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
               onClose={() => setSidebarTab(null)}
             />
           </div>
-        )}
+        ) : null}
       </div>
 
       <RoomToolbar
@@ -344,6 +549,7 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
           const next = remotes[(idx + 1) % remotes.length];
           setSpotlightSid(next?.sid ?? null);
         }}
+        insightsCount={insights.filter((i) => !i.resolved).length}
       />
 
       {showShare && <ShareModal roomId={roomId} onClose={() => setShowShare(false)} />}
@@ -362,6 +568,27 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
       {showQA && <QAPanel roomId={roomId} identity={userName} userName={userName} isAdmin={isAdmin} onClose={() => setShowQA(false)} />}
       {showTranscript && <TranscriptPanel roomId={roomId} identity={userName} userName={userName} onClose={() => setShowTranscript(false)} />}
       {showNotes && <NotesPanel roomId={roomId} identity={userName} userName={userName} onClose={() => setShowNotes(false)} />}
+      {showEngagement && <EngagementDashboard roomId={roomId} onClose={() => setShowEngagement(false)} />}
+      {showSpatial && <SpatialVoiceRoom roomId={roomId} userName={userName} onClose={() => setShowSpatial(false)} />}
+      {showMusic && <MusicRoom roomId={roomId} userName={userName} onClose={() => setShowMusic(false)} />}
+      {showTrivia && <Trivia roomId={roomId} userName={userName} isAdmin={isAdmin} onClose={() => setShowTrivia(false)} />}
+      {showBingo && <Bingo roomId={roomId} userName={userName} onClose={() => setShowBingo(false)} />}
+      {showRecap && <RecapModal roomId={roomId} isAdmin={isAdmin} onClose={() => setShowRecap(false)} />}
+
+      {/* AR filter overlay (local-only) — applies to the self-view tile */}
+      {!isEmbed && arFilter !== "none" && selfStream && (
+        <ARFilters
+          filter={arFilter}
+          videoStream={selfStream}
+          targetSelector="video[data-lk-local]"
+        />
+      )}
+
+      {/* AR filter picker — bottom center when camera is on */}
+      {!isEmbed && selfStream && (
+        <ARFilterPicker filter={arFilter} onFilterChange={setArFilter} />
+      )}
+
       <ShortcutsHelp isOpen={showShortcuts} onClose={() => setShowShortcuts(false)} />
     </div>
   );
@@ -416,5 +643,38 @@ function HandRaiseToasts({ roomId, userName }: { roomId: string; userName: strin
         </div>
       ))}
     </div>
+  );
+}
+
+function FunLaunch({
+  icon, label, hint, active, onClick, gradient,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  hint?: string;
+  active: boolean;
+  onClick: () => void;
+  gradient: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      title={hint ? `${label} (${hint})` : label}
+      className={
+        "group flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-medium transition-all " +
+        (active
+          ? "border-transparent text-white shadow-md"
+          : "border-white/[0.06] bg-white/[0.04] text-white/70 hover:border-white/20 hover:bg-white/[0.08] hover:text-white")
+      }
+      style={active ? { background: gradient } : undefined}
+    >
+      <span className="grid h-4 w-4 place-items-center shrink-0">{icon}</span>
+      <span className="truncate">{label}</span>
+      {hint && (
+        <span className="ml-auto rounded bg-white/10 px-1 font-mono text-[8px] uppercase text-white/50">
+          {hint}
+        </span>
+      )}
+    </button>
   );
 }

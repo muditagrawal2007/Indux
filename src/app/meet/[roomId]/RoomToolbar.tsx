@@ -6,8 +6,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocalParticipant } from "@livekit/components-react";
 import { Icon, Reaction } from "../../components/Icons";
+import type { RoomTab } from "./RoomClient";
 
-type Tab = "chat" | "people" | "polls" | "qa" | "notes" | null;
+type Tab = RoomTab | null;
 
 type Background = "none" | "blur" | "sunset" | "office" | "forest" | "beach";
 
@@ -31,11 +32,12 @@ type Props = {
   onTouchUpToggle?: () => void;
   touchUp?: boolean;
   onSpotlightCycle?: () => void;
+  insightsCount?: number;
 };
 
 export function RoomToolbar({
   roomId, userName, isAdmin, recording, setRecording, activeTab, onTab, onShare, onWhiteboard, onNotes, onTranscript, onSettings, onLeave,
-  canPublish = true, onBackgroundChange, background = "none", onTouchUpToggle, touchUp = false, onSpotlightCycle,
+  canPublish = true, onBackgroundChange, background = "none", onTouchUpToggle, touchUp = false, onSpotlightCycle, insightsCount = 0,
 }: Props) {
   const { localParticipant } = useLocalParticipant();
   const [micOn, setMicOn] = useState(true);
@@ -46,21 +48,87 @@ export function RoomToolbar({
   const [pttActive, setPttActive] = useState(false);
   const [quality, setQuality] = useState<"excellent" | "good" | "fair" | "poor" | "unknown">("unknown");
   const [chatBadge, setChatBadge] = useState(0);
+  const [handBadge, setHandBadge] = useState(0);
+  const [pollBadge, setPollBadge] = useState(0);
+  const [myHandRaised, setMyHandRaised] = useState(false);
+  const lastChatIdRef = useRef(0);
+  const lastPollIdRef = useRef("");
+  const chatOpenRef = useRef(false);
+  const pollsOpenRef = useRef(false);
   const pttRef = useRef(false);
 
-  // Chat badge — count new messages (poll chat/reactions endpoint for count)
+  // Chat badge — count new messages since user last viewed the panel
   useEffect(() => {
     let cancelled = false;
-    async function check() {
+    let timeoutId: any = null;
+    async function tick() {
+      if (document.hidden || cancelled) {
+        timeoutId = setTimeout(tick, 8000);
+        return;
+      }
       try {
-        const r = await fetch(`/api/rooms/${roomId}/chat?since=0`);
+        const r = await fetch(`/api/rooms/${roomId}/chat?since=${lastChatIdRef.current}`);
         const d = await r.json();
-        if (!cancelled) setChatBadge((d.messages ?? []).length);
+        const msgs = (d.messages ?? []) as any[];
+        if (msgs.length > 0) {
+          lastChatIdRef.current = Math.max(lastChatIdRef.current, ...msgs.map((m: any) => m.id));
+          if (!chatOpenRef.current) {
+            setChatBadge((b) => b + msgs.length);
+          }
+        }
       } catch {}
+      if (!cancelled) timeoutId = setTimeout(tick, 3500);
     }
-    check();
-    const t = setInterval(check, 4000);
-    return () => { cancelled = true; clearInterval(t); };
+    tick();
+    return () => { cancelled = true; if (timeoutId) clearTimeout(timeoutId); };
+  }, [roomId]);
+
+  // Hand raise badge — count of raised hands (refreshed every 4s)
+  useEffect(() => {
+    let cancelled = false;
+    let timeoutId: any = null;
+    async function tick() {
+      if (document.hidden || cancelled) {
+        timeoutId = setTimeout(tick, 10000);
+        return;
+      }
+      try {
+        const r = await fetch(`/api/rooms/${roomId}/hand`);
+        const d = await r.json();
+        const hands = (d.hands ?? d.participants ?? []) as any[];
+        setHandBadge(hands.filter((h: any) => h.identity !== userName).length);
+      } catch {}
+      if (!cancelled) timeoutId = setTimeout(tick, 4000);
+    }
+    tick();
+    return () => { cancelled = true; if (timeoutId) clearTimeout(timeoutId); };
+  }, [roomId, userName]);
+
+  // Polls badge — count new polls since user last viewed the panel
+  useEffect(() => {
+    let cancelled = false;
+    let timeoutId: any = null;
+    async function tick() {
+      if (document.hidden || cancelled) {
+        timeoutId = setTimeout(tick, 8000);
+        return;
+      }
+      try {
+        const r = await fetch(`/api/rooms/${roomId}/polls`);
+        const d = await r.json();
+        const polls = (d.polls ?? []) as any[];
+        if (polls.length > 0) {
+          const newestId = polls[0]?.id ?? "";
+          if (lastPollIdRef.current && newestId !== lastPollIdRef.current && !pollsOpenRef.current) {
+            setPollBadge((b) => b + 1);
+          }
+          lastPollIdRef.current = newestId;
+        }
+      } catch {}
+      if (!cancelled) timeoutId = setTimeout(tick, 5000);
+    }
+    tick();
+    return () => { cancelled = true; if (timeoutId) clearTimeout(timeoutId); };
   }, [roomId]);
 
   async function toggleMic() {
@@ -95,10 +163,12 @@ export function RoomToolbar({
   }
 
   async function raiseHand() {
+    const next = !myHandRaised;
+    setMyHandRaised(next);
     await fetch(`/api/rooms/${roomId}/hand`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ identity: userName, action: "raise" }),
+      body: JSON.stringify({ identity: userName, action: next ? "raise" : "lower" }),
     });
   }
 
@@ -188,7 +258,7 @@ export function RoomToolbar({
       )}
 
       {/* Main Zoom-style toolbar — pill with icon-above-text buttons */}
-      <div className="pointer-events-auto flex items-end gap-1 rounded-2xl bg-[#1c1d24]/95 px-2 py-2 shadow-2xl shadow-black/60 backdrop-blur-xl border border-white/10">
+      <div className="pointer-events-auto flex items-end gap-1 rounded-2xl border border-white/[0.08] bg-[#15151c]/85 px-2 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.6),0_2px_8px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
         {/* Mic + Cam — bigger, with red-tinted-off state */}
         <ToolButton
           on={micOn}
@@ -196,6 +266,7 @@ export function RoomToolbar({
           offIcon={<Icon.MicOff size={20} />}
           onClick={toggleMic}
           label={micOn ? "Mute" : "Unmute"}
+          description={micOn ? "Mute your mic" : "Turn on your mic"}
           shortcut="M"
           danger={!micOn}
         />
@@ -205,6 +276,7 @@ export function RoomToolbar({
           offIcon={<Icon.VideoOff size={20} />}
           onClick={toggleCam}
           label={camOn ? "Stop Video" : "Start Video"}
+          description={camOn ? "Turn off your camera" : "Turn on your camera"}
           shortcut="V"
           danger={!camOn}
         />
@@ -216,13 +288,19 @@ export function RoomToolbar({
           onIcon={<Icon.ScreenShare size={20} />}
           onClick={onShare}
           label="Share"
+          description="Share screen / window / tab"
           shortcut="S"
         />
         <ToolButton
           on={activeTab !== "chat"}
           onIcon={<Icon.MessageSquare size={20} />}
-          onClick={() => onTab(activeTab === "chat" ? null : "chat")}
+          onClick={() => {
+            chatOpenRef.current = activeTab !== "chat";
+            onTab(activeTab === "chat" ? null : "chat");
+            if (activeTab !== "chat") setChatBadge(0);
+          }}
           label="Chat"
+          description="Open chat panel"
           shortcut="C"
           active={activeTab === "chat"}
           badge={chatBadge > 0 ? chatBadge : undefined}
@@ -232,22 +310,31 @@ export function RoomToolbar({
           onIcon={<Icon.Users size={20} />}
           onClick={() => onTab(activeTab === "people" ? null : "people")}
           label="People"
+          description="See who's here, raise hands"
           shortcut="P"
           active={activeTab === "people"}
+          badge={handBadge > 0 ? handBadge : undefined}
         />
         <ToolButton
           on={activeTab !== "polls"}
           onIcon={<Icon.BarChart size={20} />}
-          onClick={() => onTab(activeTab === "polls" ? null : "polls")}
+          onClick={() => {
+            pollsOpenRef.current = activeTab !== "polls";
+            onTab(activeTab === "polls" ? null : "polls");
+            if (activeTab !== "polls") setPollBadge(0);
+          }}
           label="Polls"
+          description="Live polls & word clouds"
           shortcut="L"
           active={activeTab === "polls"}
+          badge={pollBadge > 0 ? pollBadge : undefined}
         />
         <ToolButton
           on={activeTab !== "qa"}
           onIcon={<Icon.Help size={20} />}
           onClick={() => onTab(activeTab === "qa" ? null : "qa")}
           label="Q&A"
+          description="Audience questions"
           active={activeTab === "qa"}
         />
         <ToolButton
@@ -255,8 +342,20 @@ export function RoomToolbar({
           onIcon={<Icon.FileText size={20} />}
           onClick={() => onTab(activeTab === "notes" ? null : "notes")}
           label="Notes"
+          description="Shared meeting notes"
           shortcut="N"
           active={activeTab === "notes"}
+        />
+
+        <ToolButton
+          on={activeTab !== "ai"}
+          onIcon={<Icon.Sparkles size={20} />}
+          onClick={() => onTab(activeTab === "ai" ? null : "ai")}
+          label="Sidekick"
+          description="AI assistant + insights"
+          active={activeTab === "ai"}
+          badge={insightsCount > 0 ? insightsCount : undefined}
+          gradient={true}
         />
 
         <Divider />
@@ -296,9 +395,12 @@ export function RoomToolbar({
           on={true}
           onIcon={<Icon.Hand size={20} />}
           onClick={raiseHand}
-          label="Raise"
+          label={myHandRaised ? "Lower" : "Raise"}
           shortcut="R"
+          active={myHandRaised}
+          gradient={true}
         />
+
 
         {/* Virtual background */}
         {canPublish && (
@@ -426,6 +528,8 @@ function ToolButton({
   active,
   danger,
   badge,
+  gradient,
+  description,
 }: {
   on: boolean;
   onIcon: React.ReactNode;
@@ -436,32 +540,84 @@ function ToolButton({
   active?: boolean;
   danger?: boolean;
   badge?: number;
+  gradient?: boolean;
+  description?: string;
 }) {
+  const [hovering, setHovering] = useState(false);
+  const [rippling, setRippling] = useState(false);
   const showOff = !on;
-  const baseColor = danger
-    ? "text-red-300 bg-red-500/15 hover:bg-red-500/25"
-    : active
-      ? "bg-white/15 text-white"
-      : "text-white/70 hover:bg-white/8 hover:text-white";
+  let style: React.CSSProperties | undefined;
+  let className =
+    "group relative flex h-12 w-14 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 transition-all duration-150 overflow-visible ";
+
+  if (gradient) {
+    if (active) {
+      className += "text-white shadow-lg";
+      style = {
+        background: "linear-gradient(135deg, var(--accent), #a855f7)",
+        boxShadow: "0 4px 14px rgba(99, 102, 241, 0.4)",
+      };
+    } else {
+      className += "text-white/70 hover:text-white";
+      style = undefined;
+    }
+  } else if (danger) {
+    className += "text-red-300 bg-red-500/15 hover:bg-red-500/25";
+  } else if (active) {
+    className += "bg-white/[0.12] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.05)]";
+  } else {
+    className += "text-white/65 hover:bg-white/[0.08] hover:text-white";
+  }
+
+  function handleClick() {
+    setRippling(true);
+    setTimeout(() => setRippling(false), 600);
+    onClick();
+  }
+
   return (
     <button
-      onClick={onClick}
-      title={shortcut ? `${label} (${shortcut})` : label}
+      onClick={handleClick}
+      onMouseEnter={() => setHovering(true)}
+      onMouseLeave={() => setHovering(false)}
       aria-label={label}
-      className={
-        "group relative flex h-12 w-14 flex-col items-center justify-center gap-0.5 rounded-lg px-1 py-1.5 transition-all duration-150 " +
-        baseColor
-      }
+      className={className}
+      style={style}
     >
+      {/* Ripple click effect */}
+      {rippling && (
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <span className="h-2 w-2 rounded-full bg-white/40 animate-ping" />
+        </span>
+      )}
       <span className="relative">
         {showOff && offIcon ? offIcon : onIcon}
-        {badge !== undefined && (
-          <span className="absolute -right-2 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+        {badge !== undefined && badge > 0 && (
+          <span
+            className={
+              "absolute -right-1.5 -top-1 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[9px] font-bold leading-none " +
+              (gradient ? "bg-amber-400 text-black animate-pulse" : "bg-red-500 text-white")
+            }
+          >
             {badge > 99 ? "99+" : badge}
           </span>
         )}
       </span>
       <span className="text-[9px] font-medium leading-none">{label}</span>
+
+      {/* Hover tooltip */}
+      {hovering && (
+        <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-[#0a0a14]/95 px-2.5 py-1.5 text-[11px] text-white shadow-2xl backdrop-blur-xl animate-fadeIn">
+          <span className="block text-center font-medium text-white/90">{label}</span>
+          {(description || shortcut) && (
+            <span className="mt-0.5 flex items-center justify-center gap-2 text-[10px] text-white/50">
+              {description && <span>{description}</span>}
+              {shortcut && <kbd className="rounded bg-white/10 px-1 font-mono text-[9px]">{shortcut}</kbd>}
+            </span>
+          )}
+          <span className="absolute top-full left-1/2 -mt-px h-1.5 w-1.5 -translate-x-1/2 rotate-45 border-b border-r border-white/10 bg-[#0a0a14]" />
+        </span>
+      )}
     </button>
   );
 }
