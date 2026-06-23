@@ -97,8 +97,8 @@ export function LobbyScreen({
               </button>
             </div>
             {knockedAt && (
-              <p className="mt-3 text-[11px] text-gray-500">
-                Knocked at {new Date(knockedAt).toLocaleTimeString()}
+              <p className="mt-3 text-[11px] text-gray-500" suppressHydrationWarning>
+                Knocked at {new Date(knockedAt).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: false })}
               </p>
             )}
             <p className="mt-6 text-[11px] text-gray-600">
