@@ -155,7 +155,7 @@ export default function ProfilePage() {
             <p className="mt-1 text-sm text-[color:var(--text-secondary)]">{user.email}</p>
             <div className="mt-2 flex items-center gap-2 text-xs text-[color:var(--text-tertiary)]">
               <Icon.ShieldCheck size={12} />
-              <span>Joined {new Date(user.created_at).toLocaleDateString()}</span>
+              <span suppressHydrationWarning>Joined {new Date(user.created_at).toLocaleDateString("en-US")}</span>
             </div>
           </div>
         </section>
@@ -332,7 +332,7 @@ function humanizeAgo(ms: number): string {
   if (h < 24) return `${h}h ago`;
   const d = Math.floor(h / 24);
   if (d < 7) return `${d}d ago`;
-  return new Date(Date.now() - ms).toLocaleDateString();
+  return new Date(Date.now() - ms).toLocaleDateString("en-US");
 }
 
 function QuickLink({

@@ -81,6 +81,20 @@ const FEATURES: Feature[] = [
   { id: "noise-suppression", title: "Noise Suppression", desc: "rnnoise-based cleanup.", category: "Core", status: "soon" },
   { id: "translation", title: "Real-time Translation", desc: "Captions in 50+ languages.", category: "AI", status: "idea" },
   { id: "voice-agents", title: "Voice Agents", desc: "LiveKit Agents framework integration.", category: "AI", status: "idea" },
+
+  // Phase 2 — interactivity + fun
+  { id: "ai-sidekick", title: "AI Sidekick", desc: "Chat with the meeting. Auto-extracts action items, decisions, questions.", category: "AI", status: "shipped" },
+  { id: "live-engagement", title: "Live Engagement Dashboard", desc: "Real-time participation, talk time, kind counts, activity heatmap.", category: "AI", status: "shipped" },
+  { id: "cursor-presence", title: "Cursor Presence", desc: "See everyone's mouse cursor live over LiveKit data channel.", category: "Core", status: "shipped" },
+  { id: "confetti-sfx", title: "Confetti + Sound Feedback", desc: "Milestone celebrations, procedural Web Audio cues for every interaction.", category: "Customization", status: "shipped" },
+  { id: "spatial-voice", title: "Spatial Voice Room", desc: "Clubhouse-style 2D audio positioning. Drag tiles, audio pans to match.", category: "Core", status: "shipped" },
+  { id: "music-room", title: "Music Room", desc: "Collaborative lo-fi radio with shared queue, vote-to-skip, animated waveform.", category: "Collaboration", status: "shipped" },
+  { id: "trivia", title: "Trivia Game", desc: "Live multiplayer quiz, fastest-correct scoring, leaderboard.", category: "Collaboration", status: "shipped" },
+  { id: "ar-filters", title: "AR Filters", desc: "Sunglasses, halos, crowns, Matrix, VHS, cyberpunk overlays.", category: "Customization", status: "shipped" },
+  { id: "translation-captions", title: "Live Translation Captions", desc: "Translate captions into 15 languages in real-time (MyMemory API).", category: "AI", status: "shipped" },
+  { id: "word-cloud-polls", title: "Word Cloud Polls", desc: "Open-response polls that form a live weighted word cloud.", category: "Collaboration", status: "shipped" },
+  { id: "bingo", title: "Meeting Bingo", desc: "Multiplayer 5x5 corporate-cliché bingo, auto-detected from chat + captions.", category: "Collaboration", status: "shipped" },
+  { id: "recap", title: "Post-Meeting Recap", desc: "AI-generated summary with action items auto-assigned + shareable public link.", category: "AI", status: "shipped" },
 ];
 
 const STATUS_BADGES: Record<Status, { label: string; cls: string }> = {

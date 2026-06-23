@@ -141,12 +141,18 @@ export default function InduxLauncher() {
     name: string;
     avatar_color: string;
   } | null>(null);
-  const [joinCode, setJoinCode] = useState("");
+const [joinCode, setJoinCode] = useState("");
   const [recentRooms, setRecentRooms] = useState<RecentRoom[]>([]);
-  const [currentTime, setCurrentTime] = useState(new Date());
+  const [currentTime, setCurrentTime] = useState<Date | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [liveNow, setLiveNow] = useState(0);
 
-  useEffect(() => {
+useEffect(() => {
+    setMounted(true);
+    setCurrentTime(new Date());
+  }, []);
+
+useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => r.json())
       .then((data) => {
@@ -257,17 +263,21 @@ export default function InduxLauncher() {
     localStorage.setItem("indux_theme", isDark ? "dark" : "light");
   }
 
-  const greeting =
-    currentTime.getHours() < 12
+  const greeting = !mounted || !currentTime
+    ? "Welcome"
+    : currentTime.getHours() < 12
       ? "Good morning"
       : currentTime.getHours() < 17
         ? "Good afternoon"
         : "Good evening";
 
-  const timeString = currentTime.toLocaleTimeString([], {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  const timeString = !mounted || !currentTime
+    ? ""
+    : currentTime.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+      });
 
   return (
     <div className="relative min-h-screen bg-[color:var(--bg)] text-[color:var(--text-primary)] transition-colors duration-200">
@@ -423,7 +433,7 @@ export default function InduxLauncher() {
               <span className="pulse-dot" />
               Free for everyone · 30+ features
               <span className="text-[color:var(--text-muted)]">·</span>
-              <span className="font-mono text-[10px]">{timeString}</span>
+              <span className="font-mono text-[10px]" suppressHydrationWarning>{timeString}</span>
             </div>
             <h1 className="text-5xl font-semibold tracking-tight md:text-7xl">
               {user ? (

@@ -75,7 +75,7 @@ export default function SchedulePage() {
     return cells;
   }, [viewMonth]);
 
-  const monthName = new Date(viewMonth).toLocaleDateString([], { month: "long", year: "numeric" });
+  const monthName = new Date(viewMonth).toLocaleDateString("en-US", { month: "long", year: "numeric" });
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
@@ -355,7 +355,7 @@ export default function SchedulePage() {
                 <h2 className="text-lg font-semibold">New meeting</h2>
                 <p className="mt-0.5 text-xs text-[color:var(--text-secondary)]">
                   {composerStart
-                    ? new Date(composerStart).toLocaleDateString([], { weekday: "long", month: "long", day: "numeric" })
+                    ? new Date(composerStart).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })
                     : "Set up a meeting for later"}
                 </p>
               </div>
