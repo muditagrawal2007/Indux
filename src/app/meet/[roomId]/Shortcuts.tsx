@@ -39,6 +39,12 @@ export function ShortcutsHelp({ isOpen, onClose }: { isOpen: boolean; onClose: (
           <Shortcut k="L" label="Lock room (admin)" />
           <Shortcut k="W" label="Whiteboard" />
           <Shortcut k="N" label="Notes" />
+          <Shortcut k="I" label="Engagement dashboard" />
+          <Shortcut k="X" label="Spatial voice room" />
+          <Shortcut k="M" label="Music room" />
+          <Shortcut k="T" label="Trivia game" />
+          <Shortcut k="G" label="Bingo game" />
+          <Shortcut k="Y" label="Recap" />
           <Shortcut k="Esc" label="Close dialog / leave" />
           <Shortcut k="Ctrl+K" label="Command palette" />
         </div>
