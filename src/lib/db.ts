@@ -228,6 +228,13 @@ function init(db: Database.Database) {
       PRIMARY KEY (room, identity, bucket_ms)
     );
 
+    CREATE TABLE IF NOT EXISTS newsletter_subscribers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT UNIQUE NOT NULL,
+      source TEXT,
+      created_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000)
+    );
+
     CREATE TABLE IF NOT EXISTS cursors (
       room TEXT NOT NULL,
       identity TEXT NOT NULL,
@@ -1353,4 +1360,22 @@ export function saveRecap(r: Omit<Recap, "generated_at">): Recap {
 export function getRecap(room: string): Recap | null {
   const db = getDb();
   return (db.prepare(`SELECT * FROM recaps WHERE room = ?`).get(room) as Recap) ?? null;
+}
+
+// === Newsletter ===
+export type NewsletterSubscriber = { id: number; email: string; source: string | null; created_at: number };
+
+export function subscribeNewsletter(email: string, source: string | null): { ok: boolean; already: boolean; id: number } {
+  const db = getDb();
+  const clean = email.trim().toLowerCase();
+  const existing = db.prepare(`SELECT id FROM newsletter_subscribers WHERE email = ?`).get(clean) as { id: number } | undefined;
+  if (existing) return { ok: true, already: true, id: existing.id };
+  const info = db.prepare(`INSERT INTO newsletter_subscribers (email, source) VALUES (?, ?)`).run(clean, source);
+  return { ok: true, already: false, id: Number(info.lastInsertRowid) };
+}
+
+export function countNewsletterSubscribers(): number {
+  const db = getDb();
+  const row = db.prepare(`SELECT COUNT(*) as c FROM newsletter_subscribers`).get() as { c: number };
+  return row.c;
 }
