@@ -12,6 +12,9 @@ import { Icon } from "./components/Icons";
 import { AnimatedCounter } from "./components/AnimatedCounter";
 import { Typewriter } from "./components/Typewriter";
 import { AudioWave } from "./components/AudioWave";
+import { DemoModal } from "./components/DemoModal";
+import { Newsletter } from "./components/Newsletter";
+import { EmbedPreview } from "./components/EmbedPreview";
 
 type RecentRoom = {
   name: string;
@@ -146,6 +149,7 @@ const [joinCode, setJoinCode] = useState("");
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [mounted, setMounted] = useState(false);
   const [liveNow, setLiveNow] = useState(0);
+  const [demoKind, setDemoKind] = useState<string | null>(null);
 
 useEffect(() => {
     setMounted(true);
@@ -670,9 +674,20 @@ useEffect(() => {
                 desc={f.desc}
                 icon={f.icon}
                 demo={f.demo}
+                onTry={() => setDemoKind(f.demo)}
               />
             ))}
           </div>
+        </section>
+
+        {/* Embed preview */}
+        <section className="mt-20 animate-fadeIn stagger-5">
+          <EmbedPreview />
+        </section>
+
+        {/* Newsletter */}
+        <section className="mt-20 animate-fadeIn stagger-6">
+          <Newsletter />
         </section>
 
         {/* Pricing strip */}
@@ -840,6 +855,8 @@ useEffect(() => {
           </div>
         </footer>
       </main>
+
+      {demoKind && <DemoModal kind={demoKind} onClose={() => setDemoKind(null)} />}
     </div>
   );
 }
@@ -902,11 +919,13 @@ function FeatureCard({
   desc,
   icon,
   demo,
+  onTry,
 }: {
   title: string;
   desc: string;
   icon: React.ReactNode;
   demo: string;
+  onTry: () => void;
 }) {
   return (
     <div className="group relative overflow-hidden rounded-xl border border-[color:var(--border)] bg-[color:var(--bg)] p-4 transition-all duration-200 hover:border-[color:var(--accent)]/30 hover:shadow-md hover:-translate-y-0.5">
@@ -959,6 +978,14 @@ function FeatureCard({
           </div>
         </div>
       )}
+      <button
+        onClick={onTry}
+        className="absolute right-2 top-2 flex translate-x-1 items-center gap-1 rounded-md border border-[color:var(--border)] bg-[color:var(--bg-elevated)] px-1.5 py-0.5 text-[10px] font-medium text-[color:var(--text-secondary)] opacity-0 transition-all hover:border-[color:var(--accent)]/40 hover:text-[color:var(--accent)] group-hover:translate-x-0 group-hover:opacity-100"
+        title="Open live demo"
+      >
+        Try it
+        <Icon.Arrow size={9} />
+      </button>
     </div>
   );
 }
