@@ -19,7 +19,13 @@ export default async function EmbedPage({
 
   return (
     <div className="h-screen w-screen bg-gray-950">
-      <RoomClient roomId={roomId} identity={user} isAdmin={isAdmin} externalName={name} />
+      <RoomClient
+        roomId={roomId}
+        identity={user}
+        isAdmin={isAdmin}
+        externalName={name}
+        isEmbed
+      />
     </div>
   );
 }
