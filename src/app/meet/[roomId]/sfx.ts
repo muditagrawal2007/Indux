@@ -96,4 +96,24 @@ export const sfx = {
     tone(880, 60, "sine", 0.3);
     setTimeout(() => tone(1175, 80, "sine", 0.3), 60);
   },
+  kick: () => {
+    tone(440, 60, "square", 0.45);
+    setTimeout(() => tone(220, 120, "square", 0.5), 60);
+  },
+  promote: () => {
+    tone(659, 80, "sine", 0.4);
+    setTimeout(() => tone(880, 80, "sine", 0.4), 80);
+    setTimeout(() => tone(1046, 100, "sine", 0.5), 160);
+  },
+  click: () => {
+    tone(1200, 20, "sine", 0.18);
+  },
+  toggle: () => {
+    tone(700, 30, "triangle", 0.25);
+  },
+  unlock: () => {
+    tone(523, 60, "sine", 0.4);
+    setTimeout(() => tone(659, 60, "sine", 0.4), 60);
+    setTimeout(() => tone(880, 100, "sine", 0.5), 120);
+  },
 };
