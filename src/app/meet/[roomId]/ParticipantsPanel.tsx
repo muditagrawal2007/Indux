@@ -5,6 +5,7 @@
 
 import { useEffect, useState } from "react";
 import { Icon } from "../../components/Icons";
+import { sfx } from "./sfx";
 
 type Participant = {
   sid: string;
@@ -55,6 +56,17 @@ export function ParticipantsPanel({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action, identity: target }),
     });
+  }
+
+  const [confirmRemove, setConfirmRemove] = useState<{ identity: string; name: string } | null>(null);
+  function removeWithConfirm(identity: string, name: string) {
+    setConfirmRemove({ identity, name });
+  }
+  async function doRemove() {
+    if (confirmRemove) {
+      await act("kick", confirmRemove.identity);
+      setConfirmRemove(null);
+    }
   }
 
   async function roomAction(action: string) {
@@ -175,18 +187,30 @@ export function ParticipantsPanel({
               <div className="flex items-center gap-1">
                 {handUp && <span className="text-base">✋</span>}
                 {!isSelf && isAdmin && (
-                  <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="flex gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
                     <button
-                      onClick={() => act("mute", p.identity)}
-                      title="Mute"
-                      className="rounded p-1 text-white/60 hover:bg-white/10"
+                      onClick={() => act(p.isMuted ? "unmute" : "mute", p.identity)}
+                      title={p.isMuted ? "Ask to unmute" : "Mute"}
+                      className="rounded p-1 text-white/60 hover:bg-white/10 hover:text-white transition-colors"
                     >
-                      <Icon.MicOff size={14} />
+                      {p.isMuted ? <Icon.Mic size={14} /> : <Icon.MicOff size={14} />}
                     </button>
                     <button
-                      onClick={() => { if (confirm(`Remove ${displayName}?`)) act("kick", p.identity); }}
+                      onClick={() => act(isCoHost ? "demote" : "promote", p.identity)}
+                      title={isCoHost ? "Demote from co-host" : "Make co-host"}
+                      className={
+                        "rounded p-1 transition-colors " +
+                        (isCoHost
+                          ? "bg-purple-500/20 text-purple-300"
+                          : "text-white/60 hover:bg-white/10 hover:text-white")
+                      }
+                    >
+                      <Icon.ShieldCheck size={14} />
+                    </button>
+                    <button
+                      onClick={() => removeWithConfirm(p.identity, displayName)}
                       title="Remove"
-                      className="rounded p-1 text-red-300 hover:bg-red-500/20"
+                      className="rounded p-1 text-red-300 transition-colors hover:bg-red-500/20"
                     >
                       <Icon.Logout size={14} />
                     </button>
@@ -197,6 +221,43 @@ export function ParticipantsPanel({
           );
         })}
       </div>
+
+      {confirmRemove && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm animate-fadeIn"
+          onClick={() => setConfirmRemove(null)}
+        >
+          <div
+            className="relative w-[min(420px,92vw)] rounded-2xl border border-white/10 bg-[#16161e]/95 p-5 shadow-2xl backdrop-blur-xl animate-scaleIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="grid h-10 w-10 place-items-center rounded-xl bg-red-500/15 text-red-400">
+              <Icon.Logout size={18} />
+            </div>
+            <h3 className="mt-3 text-base font-semibold">Remove {confirmRemove.name}?</h3>
+            <p className="mt-1 text-sm text-white/60">
+              They&apos;ll be dropped from the call. You can let them back in from the People panel.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setConfirmRemove(null)}
+                className="rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs text-white/80 hover:bg-white/10 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  sfx.kick();
+                  doRemove();
+                }}
+                className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white shadow-md transition-all hover:bg-red-400 active:scale-95"
+              >
+                Remove from meeting
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
