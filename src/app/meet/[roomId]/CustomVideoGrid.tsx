@@ -490,7 +490,7 @@ const ParticipantTile = memo(function ParticipantTile({
 
       {/* Hover quick-actions — admin only, for other participants */}
       {isAdmin && isOtherParticipant && hovered && (
-        <div className="absolute top-3 right-3 z-20 flex gap-1 rounded-xl border border-white/10 bg-black/70 p-1 backdrop-blur-xl animate-fadeIn shadow-2xl">
+        <div className="absolute top-3 right-3 z-20 flex gap-0.5 rounded-xl border border-white/10 bg-black/75 p-1 backdrop-blur-xl animate-fadeIn shadow-2xl">
           <button
             onClick={() => act("mute")}
             title="Mute"
@@ -499,18 +499,23 @@ const ParticipantTile = memo(function ParticipantTile({
             <Icon.MicOff size={13} />
           </button>
           <button
+            onClick={() => act("promote")}
+            title="Make co-host"
+            className="grid h-7 w-7 place-items-center rounded-md text-white/60 hover:bg-purple-500/25 hover:text-purple-200 transition-colors"
+          >
+            <Icon.ShieldCheck size={13} />
+          </button>
+          <button
             onClick={() => onSpotlight?.((participant as any).sid)}
             title="Spotlight"
-            className="grid h-7 w-7 place-items-center rounded-md text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+            className="grid h-7 w-7 place-items-center rounded-md text-white/60 hover:bg-amber-500/25 hover:text-amber-200 transition-colors"
           >
             <Icon.Star size={13} />
           </button>
           <button
-            onClick={() => {
-              if (confirm(`Remove ${name}?`)) act("kick");
-            }}
+            onClick={() => act("kick")}
             title="Remove"
-            className="grid h-7 w-7 place-items-center rounded-md text-red-300/80 hover:bg-red-500/20 hover:text-red-300 transition-colors"
+            className="grid h-7 w-7 place-items-center rounded-md text-red-300/80 hover:bg-red-500/25 hover:text-red-300 transition-colors"
           >
             <Icon.Trash size={13} />
           </button>
