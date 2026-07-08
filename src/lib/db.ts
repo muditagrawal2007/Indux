@@ -27,6 +27,7 @@ function init(db: Database.Database) {
     try { db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${decl}`); } catch {}
   };
   addCol("polls", "kind", "TEXT NOT NULL DEFAULT 'multiple_choice'");
+  addCol("hand_raises", "name", "TEXT");
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS chat (
@@ -83,6 +84,7 @@ function init(db: Database.Database) {
     CREATE TABLE IF NOT EXISTS hand_raises (
       room TEXT NOT NULL,
       identity TEXT NOT NULL,
+      name TEXT,
       raised_at INTEGER NOT NULL DEFAULT (strftime('%s','now') * 1000),
       PRIMARY KEY (room, identity)
     );
@@ -542,12 +544,12 @@ export function deleteBreakouts(room: string): void {
 }
 
 // === Hand raises ===
-export function raiseHand(room: string, identity: string): void {
+export function raiseHand(room: string, identity: string, name?: string | null): void {
   const db = getDb();
   db.prepare(
-    `INSERT INTO hand_raises (room, identity) VALUES (?, ?)
-     ON CONFLICT(room, identity) DO UPDATE SET raised_at = strftime('%s','now') * 1000`
-  ).run(room, identity);
+    `INSERT INTO hand_raises (room, identity, name) VALUES (?, ?, ?)
+     ON CONFLICT(room, identity) DO UPDATE SET raised_at = strftime('%s','now') * 1000, name = excluded.name`
+  ).run(room, identity, name ?? null);
 }
 
 export function lowerHand(room: string, identity: string): void {
@@ -555,11 +557,17 @@ export function lowerHand(room: string, identity: string): void {
   db.prepare(`DELETE FROM hand_raises WHERE room = ? AND identity = ?`).run(room, identity);
 }
 
-export function listHandRaises(room: string): Array<{ identity: string; raised_at: number }> {
+export function lowerAllHands(room: string): number {
+  const db = getDb();
+  const info = db.prepare(`DELETE FROM hand_raises WHERE room = ?`).run(room);
+  return info.changes;
+}
+
+export function listHandRaises(room: string): Array<{ identity: string; name: string | null; raised_at: number }> {
   const db = getDb();
   return db
-    .prepare(`SELECT identity, raised_at FROM hand_raises WHERE room = ? ORDER BY raised_at`)
-    .all(room) as Array<{ identity: string; raised_at: number }>;
+    .prepare(`SELECT identity, name, raised_at FROM hand_raises WHERE room = ? ORDER BY raised_at`)
+    .all(room) as Array<{ identity: string; name: string | null; raised_at: number }>;
 }
 
 
