@@ -168,7 +168,7 @@ export function RoomToolbar({
     await fetch(`/api/rooms/${roomId}/hand`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ identity: userName, action: next ? "raise" : "lower" }),
+      body: JSON.stringify({ identity: userName, name: userName, action: next ? "raise" : "lower" }),
     });
   }
 

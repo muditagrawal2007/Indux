@@ -320,7 +320,7 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
         fetch(`/api/rooms/${roomId}/hand`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ identity: userName, action: "raise" }),
+          body: JSON.stringify({ identity: userName, name: userName, action: "raise" }),
         });
         sfx.hand();
       }
