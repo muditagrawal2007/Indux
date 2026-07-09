@@ -6,6 +6,8 @@
 import { useEffect, useRef, useState } from "react";
 import { Icon, Reaction } from "../../components/Icons";
 import { WordCloudPoll } from "./WordCloudPoll";
+import { CountUp } from "../../components/CountUp";
+import { sfx } from "./sfx";
 
 type Poll = {
   id: string;
@@ -115,6 +117,7 @@ export function PollsTab({
 
   async function close(pollId: string) {
     await fetch(`/api/rooms/${roomId}/polls/${pollId}/close`, { method: "POST" });
+    sfx.confetti();
     refresh();
   }
 
@@ -388,9 +391,13 @@ function PollCard({
                   {opt}
                 </span>
                 <span className="flex items-center gap-1.5 text-xs text-white/50">
-                  <span className="font-mono tabular-nums">{count}</span>
+                  <CountUp
+                    to={count}
+                    duration={600}
+                    className="font-mono tabular-nums"
+                  />
                   {poll.closed && totalVotes > 0 && (
-                    <span className="text-white/40">· {pct}%</span>
+                    <span className="text-white/40">· <CountUp to={pct} suffix="%" duration={800} className="font-mono tabular-nums" /></span>
                   )}
                   {isMine && <span className="text-[10px] text-white/60">· you</span>}
                 </span>
