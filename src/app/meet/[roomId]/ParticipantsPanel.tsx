@@ -26,7 +26,7 @@ export function ParticipantsPanel({
 }) {
   const [list, setList] = useState<Participant[]>([]);
   const [cohosts, setCohosts] = useState<string[]>([]);
-  const [handRaises, setHandRaises] = useState<{ identity: string; raised_at: number }[]>([]);
+  const [handRaises, setHandRaises] = useState<{ identity: string; name: string | null; raised_at: number }[]>([]);
   const [filter, setFilter] = useState("");
 
   useEffect(() => {
@@ -117,6 +117,21 @@ export function ParticipantsPanel({
               >
                 <Icon.Lock size={14} />
               </button>
+              {handRaises.length > 0 && (
+                <button
+                  onClick={() => {
+                    fetch(`/api/rooms/${roomId}/hand`, {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ action: "lower-all" }),
+                    });
+                  }}
+                  title="Lower all hands"
+                  className="rounded p-1.5 text-amber-300/80 hover:bg-amber-500/15 hover:text-amber-200"
+                >
+                  <Icon.Hand size={14} />
+                </button>
+              )}
             </div>
           )}
         </div>
@@ -126,6 +141,57 @@ export function ParticipantsPanel({
           placeholder="Search…"
           className="mt-3 w-full rounded-md border border-white/10 bg-[#0a0a0f] px-3 py-1.5 text-xs text-white placeholder:text-white/30 focus:border-white/30 focus:outline-none"
         />
+
+        {/* Hand-raise queue */}
+        {handRaises.length > 0 && (
+          <div className="mt-3 rounded-lg border border-amber-400/25 bg-amber-500/10 p-2">
+            <div className="mb-1.5 flex items-center justify-between text-[10px] font-semibold uppercase tracking-wide text-amber-200">
+              <span className="flex items-center gap-1.5">
+                <Icon.Hand size={11} />
+                Hand raised · {handRaises.length}
+              </span>
+            </div>
+            <ol className="space-y-1">
+              {handRaises.map((h, i) => {
+                const me = h.identity === identity;
+                const liveName = list.find((p) => p.identity === h.identity)?.name;
+                const displayName = h.name ?? liveName ?? h.identity;
+                return (
+                  <li
+                    key={h.identity}
+                    className={
+                      "flex items-center justify-between gap-2 rounded-md px-2 py-1 text-xs " +
+                      (me ? "bg-amber-500/15 text-amber-100" : "text-amber-100/85")
+                    }
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className="grid h-5 w-5 place-items-center rounded-full bg-amber-500/30 font-mono text-[10px] font-bold tabular-nums text-amber-50">
+                        {i + 1}
+                      </span>
+                      <span className="truncate font-medium">{displayName}</span>
+                      {me && <span className="text-[10px] text-amber-200/70">— you</span>}
+                    </span>
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          fetch(`/api/rooms/${roomId}/hand`, {
+                            method: "POST",
+                            headers: { "Content-Type": "application/json" },
+                            body: JSON.stringify({ action: "lower", identity: h.identity }),
+                          });
+                        }}
+                        title="Lower hand"
+                        className="rounded p-0.5 text-amber-200/60 hover:bg-amber-500/30 hover:text-amber-50"
+                      >
+                        <Icon.Close size={10} />
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+        )}
       </div>
 
       {/* Participant list */}
