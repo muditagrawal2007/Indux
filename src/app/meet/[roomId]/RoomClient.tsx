@@ -40,6 +40,7 @@ import { Bingo } from "./Bingo";
 import { RecapModal } from "./RecapModal";
 import { ActivityTicker } from "./ActivityTicker";
 import { SfxBadge } from "./SfxBadge";
+import { PipSelfView } from "./PipSelfView";
 import type { LocalTrack, RemoteTrack } from "livekit-client";
 
 type Tab = "chat" | "people" | "polls" | "qa" | "notes" | "ai" | null;
@@ -493,6 +494,7 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
               {!isEmbed && <TranslatedCaptions roomId={roomId} identity={userName} />}
               <NetworkStats />
               {!isEmbed && <SfxBadge />}
+              {!isEmbed && <PipSelfView />}
             </>
           )}
         </div>
