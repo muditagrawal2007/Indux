@@ -435,7 +435,7 @@ useEffect(() => {
           <div className="text-center animate-fadeIn">
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-[color:var(--border)] bg-[color:var(--bg-elevated)]/80 px-3.5 py-1.5 text-xs font-medium text-[color:var(--text-secondary)] shadow-sm backdrop-blur">
               <span className="pulse-dot" />
-              Free for everyone · 30+ features
+              Free for everyone · 55+ features
               <span className="text-[color:var(--text-muted)]">·</span>
               <span className="font-mono text-[10px]" suppressHydrationWarning>{timeString}</span>
             </div>
@@ -630,7 +630,7 @@ useEffect(() => {
         {/* Stats strip */}
         <section className="mt-16 grid grid-cols-2 gap-4 sm:grid-cols-4">
           <StatCard
-            to={30}
+            to={55}
             suffix="+"
             label="Features"
             sub="Chat, polls, AI, breakout..."
@@ -688,6 +688,41 @@ useEffect(() => {
         {/* Newsletter */}
         <section className="mt-20 animate-fadeIn stagger-6">
           <Newsletter />
+        </section>
+
+        {/* What people build with us */}
+        <section className="mt-20 animate-fadeIn stagger-7">
+          <div className="text-center">
+            <h2 className="text-2xl font-semibold tracking-tight">
+              More than just meetings
+            </h2>
+            <p className="mt-2 text-sm text-[color:var(--text-secondary)]">
+              Use cases powered by the same engine.
+            </p>
+          </div>
+          <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
+            <UseCase emoji="🎓" title="Online classrooms" sub="Lobbies, hand-raise, breakout rooms" />
+            <UseCase emoji="💼" title="Sales calls" sub="Recording, AI recap, CRM exports" />
+            <UseCase emoji="🎤" title="Webinars" sub="Q&amp;A, polls, post-event recap" />
+            <UseCase emoji="🎧" title="Podcast studios" sub="Spatial voice, high-quality audio" />
+            <UseCase emoji="🩺" title="Telemedicine" sub="E2EE, waiting room, file share" />
+            <UseCase emoji="🎮" title="Game nights" sub="Trivia, bingo, music queue" />
+            <UseCase emoji="📞" title="Stand-ups" sub="Personal rooms, quick reuse" />
+            <UseCase emoji="🤝" title="1:1 mentorship" sub="Notes, in-call AI sidekick" />
+          </div>
+        </section>
+
+        {/* FAQ */}
+        <section className="mt-20 animate-fadeIn stagger-8">
+          <div className="text-center">
+            <h2 className="text-2xl font-semibold tracking-tight">FAQ</h2>
+          </div>
+          <div className="mx-auto mt-8 max-w-2xl space-y-3">
+            <Faq q="Do I need an account to join a meeting?" a="Nope. Anyone with the link can join. Hosting and recording still works without an account." />
+            <Faq q="Where is the data stored?" a="By default, on the same machine that runs the server. Switch to Postgres + S3 for multi-node clusters." />
+            <Faq q="Can I self-host for my company?" a="Yes — Apache 2.0 + MIT. Bring your own infra and brand it. No per-seat charges." />
+            <Faq q="Is there a free tier for individuals?" a="Yes — it&apos;s free forever. Cloud pricing for teams starts at $8/host/mo." />
+          </div>
         </section>
 
         {/* Pricing strip */}
@@ -987,6 +1022,28 @@ function FeatureCard({
         <Icon.Arrow size={9} />
       </button>
     </div>
+  );
+}
+
+function UseCase({ emoji, title, sub }: { emoji: string; title: string; sub: string }) {
+  return (
+    <div className="group rounded-2xl border border-[color:var(--border)] bg-[color:var(--bg)] p-4 transition-all hover:-translate-y-0.5 hover:border-[color:var(--accent)]/30 hover:shadow-md">
+      <div className="text-2xl">{emoji}</div>
+      <div className="mt-2 text-sm font-medium">{title}</div>
+      <div className="mt-0.5 text-[11px] leading-relaxed text-[color:var(--text-tertiary)]">{sub}</div>
+    </div>
+  );
+}
+
+function Faq({ q, a }: { q: string; a: string }) {
+  return (
+    <details className="group rounded-xl border border-[color:var(--border)] bg-[color:var(--bg)] px-4 py-3 [&_summary::-webkit-details-marker]:hidden">
+      <summary className="flex cursor-pointer items-center justify-between gap-3 text-sm font-medium">
+        <span>{q}</span>
+        <span className="rounded-md bg-[color:var(--bg-sunken)] px-1.5 py-0.5 text-[color:var(--text-muted)] transition-transform group-open:rotate-180">▾</span>
+      </summary>
+      <p className="mt-2 text-sm text-[color:var(--text-secondary)] leading-relaxed" dangerouslySetInnerHTML={{ __html: a }} />
+    </details>
   );
 }
 
