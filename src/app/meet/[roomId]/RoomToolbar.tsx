@@ -10,7 +10,7 @@ import type { RoomTab } from "./RoomClient";
 
 type Tab = RoomTab | null;
 
-type Background = "none" | "blur" | "sunset" | "office" | "forest" | "beach";
+type Background = "none" | "blur" | "sunset" | "office" | "forest" | "beach" | "aurora" | "ocean" | "orbit" | "custom";
 
 type Props = {
   roomId: string;
@@ -29,15 +29,23 @@ type Props = {
   canPublish?: boolean;
   onBackgroundChange?: (bg: Background) => void;
   background?: Background;
+  customBgUrl?: string | null;
+  onCustomBgUpload?: (file: File) => void;
+  onCustomBgClear?: () => void;
   onTouchUpToggle?: () => void;
   touchUp?: boolean;
   onSpotlightCycle?: () => void;
   insightsCount?: number;
+  onToggleFocus?: () => void;
+  focusMode?: boolean;
+  onOpenPomodoro?: () => void;
+  onOpenTalkTime?: () => void;
 };
 
 export function RoomToolbar({
   roomId, userName, isAdmin, recording, setRecording, activeTab, onTab, onShare, onWhiteboard, onNotes, onTranscript, onSettings, onLeave,
-  canPublish = true, onBackgroundChange, background = "none", onTouchUpToggle, touchUp = false, onSpotlightCycle, insightsCount = 0,
+  canPublish = true, onBackgroundChange, background = "none", customBgUrl, onCustomBgUpload, onCustomBgClear,
+  onTouchUpToggle, touchUp = false, onSpotlightCycle, insightsCount = 0, onToggleFocus, focusMode, onOpenPomodoro, onOpenTalkTime,
 }: Props) {
   const { localParticipant } = useLocalParticipant();
   const [micOn, setMicOn] = useState(true);
@@ -219,13 +227,16 @@ export function RoomToolbar({
     return () => { cancelled = true; clearInterval(t); };
   }, [localParticipant]);
 
-  const bgOptions: { value: Background; label: string; preview: string }[] = [
+  const bgOptions: { value: Background; label: string; preview: string; anim?: string }[] = [
     { value: "none", label: "None", preview: "transparent" },
     { value: "blur", label: "Blur", preview: "blur" },
-    { value: "sunset", label: "Sunset", preview: "linear-gradient(135deg,#f97316,#ec4899)" },
+    { value: "sunset", label: "Sunset", preview: "linear-gradient(135deg,#f97316,#ec4899)", anim: "bg-anim-sunset" },
+    { value: "aurora", label: "Aurora", preview: "linear-gradient(135deg,#6366f1,#ec4899)" },
+    { value: "ocean", label: "Ocean", preview: "linear-gradient(135deg,#0c4a6e,#fde68a)" },
+    { value: "orbit", label: "Orbit", preview: "conic-gradient(from 0deg,#6366f1,#ec4899,#f59e0b,#10b981,#6366f1)" },
     { value: "office", label: "Office", preview: "linear-gradient(135deg,#475569,#cbd5e1)" },
     { value: "forest", label: "Forest", preview: "linear-gradient(135deg,#064e3b,#10b981)" },
-    { value: "beach", label: "Beach", preview: "linear-gradient(135deg,#0ea5e9,#fde68a)" },
+    { value: "beach", label: "Beach", preview: "linear-gradient(135deg,#0ea5e9,#fde68a)", anim: "bg-anim-sunset" },
   ];
 
   return (
@@ -258,7 +269,18 @@ export function RoomToolbar({
       )}
 
       {/* Main Zoom-style toolbar — pill with icon-above-text buttons */}
-      <div className="pointer-events-auto flex items-end gap-1 rounded-2xl border border-white/[0.08] bg-[#15151c]/85 px-2 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.6),0_2px_8px_rgba(0,0,0,0.4)] backdrop-blur-2xl">
+      <div
+        className="pointer-events-auto flex items-end gap-1 rounded-2xl border border-white/[0.08] px-2 py-2 shadow-[0_8px_32px_rgba(0,0,0,0.6),0_2px_8px_rgba(0,0,0,0.4)] backdrop-blur-2xl relative overflow-hidden"
+        style={{
+          background:
+            "linear-gradient(180deg, rgba(28,28,36,0.92) 0%, rgba(15,15,20,0.92) 100%)",
+        }}
+      >
+        {/* Subtle top highlight for glass depth */}
+        <span
+          className="pointer-events-none absolute inset-x-0 top-0 h-px"
+          style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)" }}
+        />
         {/* Mic + Cam — bigger, with red-tinted-off state */}
         <ToolButton
           on={micOn}
@@ -371,7 +393,7 @@ export function RoomToolbar({
           />
           {reactionsOpen && (
             <div
-              className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-2xl border border-white/10 bg-[#1c1d24]/95 p-2 shadow-2xl backdrop-blur-xl animate-scaleIn"
+              className="absolute bottom-full left-1/2 mb-2.5 -translate-x-1/2 rounded-2xl border border-white/10 bg-black/85 p-2 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-2xl animate-scaleIn"
               onMouseLeave={() => setReactionsOpen(false)}
             >
               <div className="flex gap-1">
@@ -379,7 +401,7 @@ export function RoomToolbar({
                   <button
                     key={r}
                     onClick={() => sendReaction(r)}
-                    className="grid h-10 w-10 place-items-center rounded-xl text-white/50 hover:bg-white/10 hover:text-white hover:scale-125 transition-all duration-150"
+                    className="grid h-10 w-10 place-items-center rounded-xl text-white/55 hover:bg-white/10 hover:text-white hover:scale-125 transition-all duration-150"
                     title={r}
                   >
                     <Reaction kind={r} />
@@ -414,11 +436,16 @@ export function RoomToolbar({
             />
             {bgOpen && (
               <div
-                className="absolute bottom-full left-1/2 mb-2 -translate-x-1/2 w-72 rounded-2xl border border-white/10 bg-[#1c1d24]/95 p-3 shadow-2xl backdrop-blur-xl animate-scaleIn"
+                className="absolute bottom-full left-1/2 mb-2.5 -translate-x-1/2 w-80 rounded-2xl border border-white/10 bg-black/85 p-3 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-2xl animate-scaleIn"
                 onMouseLeave={() => setBgOpen(false)}
               >
-                <div className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-white/40">
-                  Virtual background
+                <div className="mb-2 flex items-center justify-between">
+                  <div className="text-[10px] font-semibold uppercase tracking-wide text-white/40">
+                    Virtual background
+                  </div>
+                  <span className="rounded-full bg-white/[0.06] px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-wider text-white/40">
+                    {bgOptions.length} presets
+                  </span>
                 </div>
                 <div className="grid grid-cols-3 gap-2">
                   {bgOptions.map((opt) => (
@@ -426,15 +453,15 @@ export function RoomToolbar({
                       key={opt.value}
                       onClick={() => { onBackgroundChange?.(opt.value); setBgOpen(false); }}
                       className={
-                        "flex flex-col items-center gap-1 rounded-lg border p-1 transition-all " +
+                        "group flex flex-col items-center gap-1 rounded-lg border p-1 transition-all hover:scale-105 " +
                         (background === opt.value
-                          ? "border-white/40 bg-white/10"
-                          : "border-white/5 hover:border-white/20 hover:bg-white/5")
+                          ? "border-white/50 bg-white/15 shadow-[inset_0_0_0_1px_rgba(255,255,255,0.1)]"
+                          : "border-white/5 hover:border-white/25 hover:bg-white/[0.06]")
                       }
                       title={opt.label}
                     >
                       <div
-                        className="h-9 w-full rounded"
+                        className={"h-9 w-full rounded overflow-hidden " + (opt.anim ?? "")}
                         style={{
                           background:
                             opt.preview === "transparent"
@@ -443,12 +470,45 @@ export function RoomToolbar({
                                 ? "rgba(255,255,255,0.15)"
                                 : opt.preview,
                           backdropFilter: opt.preview === "blur" ? "blur(8px)" : undefined,
+                          backgroundSize: opt.anim ? "200% 200%" : undefined,
                         }}
                       />
-                      <span className="text-[9px] text-white/60">{opt.label}</span>
+                      <span className="text-[9px] text-white/65 group-hover:text-white/90">{opt.label}</span>
                     </button>
                   ))}
                 </div>
+
+                {/* Custom image upload */}
+                <div className="mt-2 flex items-center gap-2">
+                  <label className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-lg border border-dashed border-white/15 bg-white/[0.04] px-2.5 py-2 text-[11px] text-white/55 transition-all hover:border-white/30 hover:bg-white/[0.08] hover:text-white/85">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0];
+                        if (f) {
+                          onCustomBgUpload?.(f);
+                          onBackgroundChange?.("custom");
+                          setBgOpen(false);
+                        }
+                        e.currentTarget.value = "";
+                      }}
+                    />
+                    <Icon.Image size={11} />
+                    {customBgUrl ? "Replace image" : "Upload image"}
+                  </label>
+                  {customBgUrl && (
+                    <button
+                      onClick={() => { onCustomBgClear?.(); onBackgroundChange?.("none"); }}
+                      className="rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-[10px] text-white/55 hover:bg-white/10 hover:text-white/85"
+                      title="Remove custom background"
+                    >
+                      <Icon.Close size={11} />
+                    </button>
+                  )}
+                </div>
+
                 <button
                   onClick={() => { onTouchUpToggle?.(); }}
                   className={
@@ -480,10 +540,14 @@ export function RoomToolbar({
           />
           {moreOpen && (
             <div
-              className="absolute bottom-full right-0 mb-2 w-56 rounded-xl border border-white/10 bg-[#1c1d24]/95 p-1 shadow-2xl backdrop-blur-xl animate-scaleIn"
+              className="absolute bottom-full right-0 mb-2.5 w-56 rounded-xl border border-white/10 bg-black/85 p-1 shadow-[0_8px_32px_rgba(0,0,0,0.5)] backdrop-blur-2xl animate-scaleIn"
               onMouseLeave={() => setMoreOpen(false)}
             >
               <MoreItem icon={<Icon.Pin size={16} />} label="Spotlight next" onClick={() => { onSpotlightCycle?.(); setMoreOpen(false); }} />
+              <MoreItem icon={<Icon.Eye size={16} />} label={focusMode ? "Exit focus mode" : "Focus mode"} onClick={() => { onToggleFocus?.(); setMoreOpen(false); }} />
+              <MoreItem icon={<span style={{ fontSize: 14 }}>⏱</span>} label="Pomodoro timer" onClick={() => { onOpenPomodoro?.(); setMoreOpen(false); }} />
+              <MoreItem icon={<span style={{ fontSize: 14 }}>📊</span>} label="Talk time stats" onClick={() => { onOpenTalkTime?.(); setMoreOpen(false); }} />
+              <div className="my-1 h-px bg-white/10" />
               <MoreItem icon={<Icon.Pencil size={16} />} label="Whiteboard" shortcut="W" onClick={() => { onWhiteboard(); setMoreOpen(false); }} />
               <MoreItem icon={<Icon.Sparkles size={16} />} label="Transcript" shortcut="T" onClick={() => { onTranscript(); setMoreOpen(false); }} />
               <MoreItem icon={<Icon.Settings size={16} />} label="Settings" onClick={() => { onSettings(); setMoreOpen(false); }} />
@@ -508,10 +572,14 @@ export function RoomToolbar({
         {/* End call — big red button */}
         <button
           onClick={onLeave}
-          className="ml-2 flex h-12 items-center gap-2 rounded-xl bg-red-500 px-5 text-sm font-semibold text-white hover:bg-red-400 transition-all shadow-lg shadow-red-500/30"
+          className="ml-2 flex h-12 items-center gap-2 rounded-xl bg-gradient-to-b from-red-500 to-red-600 px-5 text-sm font-semibold text-white hover:from-red-400 hover:to-red-500 transition-all shadow-lg shadow-red-500/30 hover:shadow-red-500/45 hover:scale-[1.02] active:scale-[0.98] relative overflow-hidden group"
         >
+          <span
+            className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{ background: "radial-gradient(circle at 30% 50%, rgba(255,255,255,0.18), transparent 60%)" }}
+          />
           <Icon.PhoneOff size={16} />
-          <span className="hidden sm:inline">End</span>
+          <span className="hidden sm:inline relative z-10">End</span>
         </button>
       </div>
     </div>
@@ -555,7 +623,7 @@ function ToolButton({
       className += "text-white shadow-lg";
       style = {
         background: "linear-gradient(135deg, var(--accent), #a855f7)",
-        boxShadow: "0 4px 14px rgba(99, 102, 241, 0.4)",
+        boxShadow: "0 4px 14px rgba(99, 102, 241, 0.4), inset 0 1px 0 rgba(255,255,255,0.18)",
       };
     } else {
       className += "text-white/70 hover:text-white";
@@ -595,7 +663,7 @@ function ToolButton({
         {badge !== undefined && badge > 0 && (
           <span
             className={
-              "absolute -right-1.5 -top-1 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[9px] font-bold leading-none " +
+              "absolute -right-1.5 -top-1 grid h-4 min-w-4 place-items-center rounded-full px-1 text-[9px] font-bold leading-none ring-2 ring-[#15151c] " +
               (gradient ? "bg-amber-400 text-black animate-pulse" : "bg-red-500 text-white")
             }
           >
@@ -603,19 +671,19 @@ function ToolButton({
           </span>
         )}
       </span>
-      <span className="text-[9px] font-medium leading-none">{label}</span>
+      <span className="text-[9px] font-medium leading-none tracking-tight">{label}</span>
 
       {/* Hover tooltip */}
       {hovering && (
-        <span className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-[#0a0a14]/95 px-2.5 py-1.5 text-[11px] text-white shadow-2xl backdrop-blur-xl animate-fadeIn">
-          <span className="block text-center font-medium text-white/90">{label}</span>
+        <span className="pointer-events-none absolute bottom-full left-1/2 mb-2.5 -translate-x-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-black/85 px-3 py-1.5 text-[11px] text-white shadow-[0_8px_24px_rgba(0,0,0,0.5)] backdrop-blur-2xl animate-fadeIn">
+          <span className="block text-center font-semibold text-white/95">{label}</span>
           {(description || shortcut) && (
-            <span className="mt-0.5 flex items-center justify-center gap-2 text-[10px] text-white/50">
+            <span className="mt-0.5 flex items-center justify-center gap-2 text-[10px] text-white/55">
               {description && <span>{description}</span>}
-              {shortcut && <kbd className="rounded bg-white/10 px-1 font-mono text-[9px]">{shortcut}</kbd>}
+              {shortcut && <kbd className="rounded bg-white/10 px-1.5 py-0.5 font-mono text-[9px] border border-white/10">{shortcut}</kbd>}
             </span>
           )}
-          <span className="absolute top-full left-1/2 -mt-px h-1.5 w-1.5 -translate-x-1/2 rotate-45 border-b border-r border-white/10 bg-[#0a0a14]" />
+          <span className="absolute top-full left-1/2 -mt-px h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-white/10 bg-black/85" />
         </span>
       )}
     </button>
@@ -623,16 +691,18 @@ function ToolButton({
 }
 
 function Divider() {
-  return <div className="mx-1 h-8 w-px bg-white/10" />;
+  return (
+    <div className="mx-1.5 h-8 w-px bg-gradient-to-b from-transparent via-white/15 to-transparent" />
+  );
 }
 
 function QualityIndicator({ quality }: { quality: "excellent" | "good" | "fair" | "poor" | "unknown" }) {
-  const bars: Record<typeof quality, { filled: number; color: string; label: string }> = {
-    excellent: { filled: 4, color: "bg-emerald-400", label: "Excellent" },
-    good: { filled: 3, color: "bg-emerald-400", label: "Good" },
-    fair: { filled: 2, color: "bg-amber-400", label: "Fair" },
-    poor: { filled: 1, color: "bg-red-400", label: "Poor" },
-    unknown: { filled: 2, color: "bg-white/30", label: "Connecting..." },
+  const bars: Record<typeof quality, { filled: number; color: string; glow: string; label: string }> = {
+    excellent: { filled: 4, color: "bg-emerald-400", glow: "shadow-[0_0_6px_rgba(52,211,153,0.5)]", label: "Excellent" },
+    good: { filled: 3, color: "bg-emerald-400", glow: "shadow-[0_0_6px_rgba(52,211,153,0.5)]", label: "Good" },
+    fair: { filled: 2, color: "bg-amber-400", glow: "shadow-[0_0_6px_rgba(251,191,36,0.5)]", label: "Fair" },
+    poor: { filled: 1, color: "bg-red-400", glow: "shadow-[0_0_6px_rgba(248,113,113,0.5)]", label: "Poor" },
+    unknown: { filled: 2, color: "bg-white/30", glow: "", label: "Connecting..." },
   };
   const cfg = bars[quality];
   return (
@@ -643,13 +713,13 @@ function QualityIndicator({ quality }: { quality: "excellent" | "good" | "fair" 
             key={i}
             className={
               "w-1 rounded-sm transition-all " +
-              (i <= cfg.filled ? cfg.color : "bg-white/10")
+              (i <= cfg.filled ? `${cfg.color} ${cfg.glow}` : "bg-white/[0.08]")
             }
             style={{ height: 4 + i * 2 }}
           />
         ))}
       </div>
-      <span className="text-[9px] font-medium leading-none text-white/60">{cfg.label}</span>
+      <span className="text-[9px] font-medium leading-none text-white/65 tracking-tight">{cfg.label}</span>
     </div>
   );
 }
@@ -665,13 +735,13 @@ function MoreItem({
   return (
     <button
       onClick={onClick}
-      className="flex w-full items-center justify-between gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-white/70 hover:bg-white/5 hover:text-white transition-colors"
+      className="flex w-full items-center justify-between gap-2.5 rounded-lg px-3 py-2 text-left text-sm text-white/70 hover:bg-white/[0.08] hover:text-white transition-colors"
     >
       <span className="flex items-center gap-2.5">
-        <span className="text-white/40">{icon}</span>
+        <span className="text-white/45">{icon}</span>
         {label}
       </span>
-      {shortcut && <kbd>{shortcut}</kbd>}
+      {shortcut && <kbd className="bg-white/[0.08] border-white/[0.08]">{shortcut}</kbd>}
     </button>
   );
 }
