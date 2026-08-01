@@ -31,6 +31,10 @@ import { CursorPresence } from "./CursorPresence";
 import { ConfettiCanvas } from "./Confetti";
 import { fireConfetti } from "./Confetti";
 import { sfx, isSfxEnabled } from "./sfx";
+import { PomodoroTimer } from "./PomodoroTimer";
+import { TalkTimePanel } from "./TalkTime";
+import { WelcomeBanner } from "./WelcomeBanner";
+import { EmojiBubbleStream } from "./EmojiBubbleStream";
 import { SpatialVoiceRoom } from "./SpatialVoiceRoom";
 import { MusicRoom } from "./MusicRoom";
 import { Trivia } from "./Trivia";
@@ -191,13 +195,18 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
   const [showBingo, setShowBingo] = useState(false);
   const [showRecap, setShowRecap] = useState(false);
   const [inLobby, setInLobby] = useState(false);
-  const [background, setBackground] = useState<"none" | "blur" | "sunset" | "office" | "forest" | "beach">(bgMode);
+  const [background, setBackground] = useState<"none" | "blur" | "sunset" | "office" | "forest" | "beach" | "aurora" | "ocean" | "orbit" | "custom">(bgMode);
+  const [customBgUrl, setCustomBgUrl] = useState<string | null>(null);
   const [touchUp, setTouchUp] = useState(false);
   const [spotlightSid, setSpotlightSid] = useState<string | null>(null);
   const [captionsOn, setCaptionsOn] = useState(false);
   const [insights, setInsights] = useState<any[]>([]);
   const [arFilter, setArFilter] = useState<FilterKind>("none");
   const [selfStream, setSelfStream] = useState<MediaStream | null>(null);
+  const [focusMode, setFocusMode] = useState(false);
+  const [showPomodoro, setShowPomodoro] = useState(false);
+  const [showTalkTime, setShowTalkTime] = useState(false);
+  const [emojiStreamOn, setEmojiStreamOn] = useState(true);
 
   // Get the underlying LiveKit Room object from the local participant
   const lkRoom: LKRoom | null = (localParticipant as any)?.room ?? null;
@@ -396,57 +405,41 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
             viewMode={viewMode}
             userName={userName}
             background={background}
+            customBgUrl={customBgUrl}
             touchUp={touchUp}
             spotlightSid={spotlightSid}
             onSpotlight={setSpotlightSid}
             isAdmin={isAdmin}
             identity={userName}
             roomId={roomId}
+            dimmed={focusMode}
           />
           <FloatingReactions roomId={roomId} identity={userName} />
         </div>
 
-        {/* AI floating launcher */}
-        {!isEmbed && sidebarTab !== "ai" && (
-          <button
-            onClick={() => setSidebarTab("ai")}
-            className="absolute bottom-24 right-3 z-20 group flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-2xl transition-all hover:scale-[1.04] active:scale-[0.97]"
-            style={{
-              background: "linear-gradient(135deg, var(--accent), #a855f7)",
-              boxShadow: "0 8px 24px rgba(99, 102, 241, 0.4), 0 2px 8px rgba(168, 85, 247, 0.3)",
-            }}
-            title="AI Sidekick"
-          >
-            <span className="relative">
-              <Icon.Sparkles size={13} />
-              {insights.filter((i) => !i.resolved).length > 0 && (
-                <span className="absolute -right-2 -top-2 grid h-4 min-w-4 place-items-center rounded-full bg-amber-400 px-1 text-[9px] font-bold text-black animate-pulse">
-                  {insights.filter((i) => !i.resolved).length}
-                </span>
-              )}
-            </span>
-            <span className="hidden sm:inline">Ask Sidekick</span>
-          </button>
+        {/* Welcome banner for new joiners */}
+        {!isEmbed && (
+          <WelcomeBanner
+            participants={(roomState.participants || []) as any}
+            currentName={userName}
+          />
         )}
 
-        {/* Engagement dashboard launcher */}
-        {!isEmbed && (
-          <button
-            onClick={() => setShowEngagement(true)}
-            className="absolute bottom-24 right-3 z-20 group mr-36 sm:mr-44 flex items-center gap-2 rounded-full border border-white/[0.08] bg-black/45 px-3 py-2 text-xs font-medium text-white/85 shadow-lg backdrop-blur-xl transition-all hover:border-white/20 hover:bg-black/65 hover:text-white"
-            title="Engagement (I)"
-          >
-            <Icon.TrendingUp size={13} />
-            <span className="hidden sm:inline">Insights</span>
-          </button>
-        )}
+        {/* Emoji bubble stream — ambient reactions */}
+        {!isEmbed && emojiStreamOn && <EmojiBubbleStream running />}
 
-        {/* Fun features launcher cluster — top-right of stage */}
+        {/* Right rail — vertical stack of stage controls, well-spaced above toolbar */}
         {!isEmbed && (
-          <div className="absolute top-16 right-3 z-20 flex flex-col gap-1 animate-fadeIn">
-            <div className="rounded-2xl border border-white/[0.08] bg-black/35 px-1.5 py-2 backdrop-blur-xl shadow-lg">
-              <div className="px-1.5 pb-1.5 mb-1 border-b border-white/[0.06] text-[8px] font-semibold uppercase tracking-[0.18em] text-white/40">
-                Play
+          <div className="absolute right-3 bottom-28 z-20 flex flex-col items-end gap-2.5 animate-fadeIn">
+            {/* Fun features cluster — collapsible */}
+            <div className="rounded-2xl border border-white/[0.08] bg-black/45 px-1.5 py-2 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.45)] relative overflow-hidden">
+              <span
+                className="pointer-events-none absolute inset-x-0 top-0 h-px"
+                style={{ background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent)" }}
+              />
+              <div className="px-1.5 pb-1.5 mb-1 border-b border-white/[0.06] text-[8px] font-semibold uppercase tracking-[0.18em] text-white/40 flex items-center justify-between">
+                <span>Play</span>
+                <span className="h-1 w-1 rounded-full bg-gradient-to-r from-amber-300 via-rose-400 to-violet-400" />
               </div>
               <div className="flex flex-col gap-1">
                 <FunLaunch icon={<Icon.Volume size={11} />} label="Spatial" hint="X" active={showSpatial} onClick={() => setShowSpatial((s) => !s)} gradient="linear-gradient(135deg, #ec4899, #f59e0b)" />
@@ -458,34 +451,66 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
                 <FunLaunch icon={<Icon.FileText size={11} />} label="Recap" hint="Y" active={showRecap} onClick={() => setShowRecap(true)} gradient="linear-gradient(135deg, #6366f1, #a855f7)" />
               </div>
             </div>
-          </div>
-        )}
 
-        {/* View toggle — floating bottom-right of toolbar */}
-        {!isEmbed && (
-          <div className="absolute right-3 bottom-44 z-20">
+            {/* View toggle */}
             <ViewToggle view={viewMode} onViewChange={setViewMode} />
+
+            {/* Insights dashboard */}
+            <button
+              onClick={() => setShowEngagement(true)}
+              className="group flex items-center gap-2 rounded-full border border-white/[0.08] bg-black/45 px-3 py-2 text-xs font-medium text-white/85 shadow-lg backdrop-blur-2xl transition-all hover:border-white/25 hover:bg-black/70 hover:text-white hover:scale-[1.03] active:scale-[0.97]"
+              title="Engagement (I)"
+            >
+              <Icon.TrendingUp size={13} className="text-emerald-300/80" />
+              <span className="hidden sm:inline">Insights</span>
+            </button>
+
+            {/* AI Sidekick — primary CTA */}
+            {sidebarTab !== "ai" && (
+              <button
+                onClick={() => setSidebarTab("ai")}
+                className="group flex items-center gap-2 rounded-full px-3.5 py-2 text-xs font-semibold text-white shadow-2xl transition-all hover:scale-[1.04] active:scale-[0.97]"
+                style={{
+                  background: "linear-gradient(135deg, var(--accent), #a855f7)",
+                  boxShadow: "0 8px 24px rgba(99, 102, 241, 0.4), 0 2px 8px rgba(168, 85, 247, 0.3)",
+                }}
+                title="AI Sidekick"
+              >
+                <span className="relative">
+                  <Icon.Sparkles size={13} />
+                  {insights.filter((i) => !i.resolved).length > 0 && (
+                    <span className="absolute -right-2 -top-2 grid h-4 min-w-4 place-items-center rounded-full bg-amber-400 px-1 text-[9px] font-bold text-black animate-pulse">
+                      {insights.filter((i) => !i.resolved).length}
+                    </span>
+                  )}
+                </span>
+                <span className="hidden sm:inline">Ask Sidekick</span>
+              </button>
+            )}
           </div>
         )}
 
-        {/* Meeting info banner — shown top-center for everyone, fades */}
+        {/* Meeting info pill — subtle top-center, fades after a moment */}
         {!isEmbed && (
           <div className="pointer-events-none absolute top-16 left-1/2 z-10 -translate-x-1/2 animate-fadeIn">
-            <div className="rounded-full border border-white/10 bg-black/40 px-4 py-1.5 text-[11px] font-medium text-white/60 backdrop-blur-md">
-              <span className="font-mono tracking-wider">/{roomId}</span>
-              <span className="mx-2 text-white/20">·</span>
-              <span>{roomState.participants?.length || 1} in room</span>
+            <div className="flex items-center gap-2 rounded-full border border-white/[0.08] bg-black/40 px-3.5 py-1.5 text-[11px] font-medium text-white/70 backdrop-blur-2xl shadow-[0_4px_16px_rgba(0,0,0,0.3)]">
+              <span className="font-mono tracking-wider text-white/55">/{roomId}</span>
+              <span className="h-1 w-1 rounded-full bg-white/15" />
+              <span className="flex items-center gap-1.5">
+                <Icon.Users size={10} className="text-white/40" />
+                <span className="tabular-nums">{roomState.participants?.length || 1}</span>
+              </span>
             </div>
           </div>
         )}
 
         {/* Bottom-left info badge */}
-        <div className="absolute bottom-3 left-3 z-20 flex items-center gap-2">
+        <div className="absolute bottom-3 left-3 z-20 flex items-center gap-1.5">
           {!isEmbed && (
             <>
               <button
                 onClick={() => setShowShortcuts(true)}
-                className="flex items-center gap-1 rounded-lg bg-black/50 px-2 py-1 text-[10px] text-white/50 backdrop-blur-sm hover:bg-black/70 hover:text-white/70 transition-colors"
+                className="flex items-center gap-1 rounded-lg border border-white/[0.06] bg-black/45 px-2 py-1.5 text-[10px] text-white/55 backdrop-blur-2xl hover:bg-black/65 hover:text-white/80 transition-all hover:border-white/15"
                 title="Keyboard shortcuts"
               >
                 <Icon.Keyboard size={10} />
@@ -543,16 +568,29 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
         canPublish={!inLobby}
         onBackgroundChange={setBackground}
         background={background}
+        customBgUrl={customBgUrl}
+        onCustomBgUpload={(file) => {
+          const url = URL.createObjectURL(file);
+          if (customBgUrl) URL.revokeObjectURL(customBgUrl);
+          setCustomBgUrl(url);
+        }}
+        onCustomBgClear={() => {
+          if (customBgUrl) URL.revokeObjectURL(customBgUrl);
+          setCustomBgUrl(null);
+        }}
         onTouchUpToggle={() => setTouchUp((v) => !v)}
         touchUp={touchUp}
         onSpotlightCycle={() => {
-          // Cycle through remote participants
           const remotes = roomState.participants ?? [];
           if (remotes.length === 0) return;
           const idx = remotes.findIndex((p: any) => p.sid === spotlightSid);
           const next = remotes[(idx + 1) % remotes.length];
           setSpotlightSid(next?.sid ?? null);
         }}
+        onToggleFocus={() => setFocusMode((v) => !v)}
+        focusMode={focusMode}
+        onOpenPomodoro={() => setShowPomodoro(true)}
+        onOpenTalkTime={() => setShowTalkTime(true)}
         insightsCount={insights.filter((i) => !i.resolved).length}
       />
 
@@ -578,6 +616,14 @@ function RoomV2({ roomId, isAdmin, userName, onLeave, isEmbed, bgMode }: { roomI
       {showTrivia && <Trivia roomId={roomId} userName={userName} isAdmin={isAdmin} onClose={() => setShowTrivia(false)} />}
       {showBingo && <Bingo roomId={roomId} userName={userName} onClose={() => setShowBingo(false)} />}
       {showRecap && <RecapModal roomId={roomId} isAdmin={isAdmin} onClose={() => setShowRecap(false)} />}
+      {showPomodoro && <PomodoroTimer open={showPomodoro} onClose={() => setShowPomodoro(false)} />}
+      {showTalkTime && (
+        <TalkTimePanel
+          open={showTalkTime}
+          onClose={() => setShowTalkTime(false)}
+          participants={(roomState.participants as any[]) || []}
+        />
+      )}
 
       {/* AR filter overlay (local-only) — applies to the self-view tile */}
       {!isEmbed && arFilter !== "none" && selfStream && (
@@ -629,18 +675,20 @@ function HandRaiseToasts({ roomId, userName }: { roomId: string; userName: strin
   if (toasts.length === 0) return null;
 
   return (
-    <div className="absolute top-16 left-1/2 z-50 -translate-x-1/2 space-y-2">
+    <div className="absolute top-20 left-3 z-50 space-y-2 max-w-xs">
       {toasts.map((toast) => (
         <div
           key={toast.id}
-          className="animate-bounceIn flex items-center gap-2.5 rounded-full border border-[color:var(--warning)]/20 bg-black/70 px-4 py-2 text-sm text-[color:var(--warning)] shadow-lg backdrop-blur-md"
+          className="animate-bounceIn flex items-center gap-2.5 rounded-full border border-amber-400/30 bg-black/65 px-4 py-2 text-sm text-amber-200 shadow-[0_8px_24px_rgba(0,0,0,0.4),0_0_12px_rgba(251,191,36,0.15)] backdrop-blur-2xl"
         >
-          <Icon.Hand size={16} />
-          <span className="font-medium">{toast.name}</span>
-          <span className="text-[color:var(--warning)]/60">raised their hand</span>
+          <span className="grid h-6 w-6 place-items-center rounded-full bg-amber-400/20 ring-1 ring-amber-400/30">
+            <Icon.Hand size={12} />
+          </span>
+          <span className="font-semibold text-white">{toast.name}</span>
+          <span className="text-amber-200/70">raised their hand</span>
           <button
             onClick={() => setToasts((prev) => prev.filter((t) => t.id !== toast.id))}
-            className="ml-1 rounded-full p-0.5 text-[color:var(--warning)]/40 hover:text-[color:var(--warning)]"
+            className="ml-1 rounded-full p-0.5 text-white/40 hover:text-white/80 transition-colors"
           >
             <Icon.Close size={12} />
           </button>
@@ -665,12 +713,12 @@ function FunLaunch({
       onClick={onClick}
       title={hint ? `${label} (${hint})` : label}
       className={
-        "group flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-medium transition-all " +
+        "group flex items-center gap-1.5 rounded-lg border px-2 py-1 text-[10px] font-medium transition-all duration-150 " +
         (active
           ? "border-transparent text-white shadow-md"
-          : "border-white/[0.06] bg-white/[0.04] text-white/70 hover:border-white/20 hover:bg-white/[0.08] hover:text-white")
+          : "border-white/[0.06] bg-white/[0.04] text-white/70 hover:border-white/20 hover:bg-white/[0.08] hover:text-white hover:translate-x-[-1px]")
       }
-      style={active ? { background: gradient } : undefined}
+      style={active ? { background: gradient, boxShadow: "0 4px 14px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.18)" } : undefined}
     >
       <span className="grid h-4 w-4 place-items-center shrink-0">{icon}</span>
       <span className="truncate">{label}</span>
