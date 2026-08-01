@@ -5,7 +5,7 @@
 // Uses a real iframe pointing at /embed/[roomId].
 
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Icon } from "./Icons";
 
 const SAMPLE_ROOMS = ["demo", "all-hands", "standup"] as const;
@@ -13,9 +13,12 @@ const SAMPLE_ROOMS = ["demo", "all-hands", "standup"] as const;
 export function EmbedPreview() {
   const [room, setRoom] = useState<string>("demo");
   const [copied, setCopied] = useState(false);
-  const url = typeof window !== "undefined"
-    ? `${window.location.origin}/embed/${room}`
-    : `/embed/${room}`;
+  const [origin, setOrigin] = useState<string>("");
+  // Compute the origin only after mount so SSR and CSR markup match.
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+  const url = origin ? `${origin}/embed/${room}` : `/embed/${room}`;
   const snippet = `<iframe src="${url}" width="100%" height="600" allow="camera; microphone; display-capture; autoplay" style="border-radius:12px;border:0"></iframe>`;
 
   function copy() {

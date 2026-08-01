@@ -34,7 +34,7 @@ function useTrackRef(participant: any, source: Track.Source) {
   })?.publication ?? null;
 }
 
-type Background = "none" | "blur" | "sunset" | "office" | "forest" | "beach";
+type Background = "none" | "blur" | "sunset" | "office" | "forest" | "beach" | "aurora" | "ocean" | "orbit" | "custom";
 
 // Per-identity accent color so each tile has a distinct feel
 function accentFor(id: string): string {
@@ -53,7 +53,7 @@ function accentFor(id: string): string {
 
 export function CustomVideoGrid({
   viewMode, userName, background = "none", touchUp = false,
-  spotlightSid, onSpotlight, isAdmin, identity, roomId,
+  spotlightSid, onSpotlight, isAdmin, identity, roomId, customBgUrl, dimmed,
 }: {
   viewMode: "tile" | "stage";
   userName: string;
@@ -64,6 +64,8 @@ export function CustomVideoGrid({
   isAdmin?: boolean;
   identity?: string;
   roomId?: string;
+  customBgUrl?: string | null;
+  dimmed?: boolean;
 }) {
   const { localParticipant } = useLocalParticipant();
   const remotes = useRemoteParticipants();
@@ -103,6 +105,8 @@ export function CustomVideoGrid({
           roomId={roomId ?? ""}
           background={background}
           touchUp={touchUp}
+          customBgUrl={customBgUrl}
+          dimmed={!!dimmed}
         />
       ) : (
         <TileView
@@ -116,6 +120,8 @@ export function CustomVideoGrid({
           roomId={roomId ?? ""}
           background={background}
           touchUp={touchUp}
+          customBgUrl={customBgUrl}
+          dimmed={!!dimmed}
         />
       )}
     </div>
@@ -124,47 +130,76 @@ export function CustomVideoGrid({
 
 function EmptyState() {
   return (
-    <div className="flex h-full w-full items-center justify-center text-center">
-      <div className="animate-fadeIn">
-        <div className="mx-auto mb-4 grid h-16 w-16 place-items-center rounded-full bg-gradient-to-br from-white/8 to-white/3 ring-1 ring-white/10 animate-pulse">
-          <Icon.Users size={28} className="text-white/40" />
+    <div className="flex h-full w-full items-center justify-center text-center px-6">
+      <div className="animate-fadeIn max-w-md">
+        {/* Animated rings */}
+        <div className="relative mx-auto mb-6 h-24 w-24">
+          <div
+            className="absolute inset-0 rounded-full opacity-50 pulse-halo"
+            style={{
+              background: "radial-gradient(circle, var(--accent) 0%, transparent 70%)",
+            }}
+          />
+          <div className="absolute inset-0 grid place-items-center">
+            <div className="grid h-20 w-20 place-items-center rounded-full bg-gradient-to-br from-white/[0.08] to-white/[0.02] ring-1 ring-white/10 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] backdrop-blur-xl">
+              <Icon.Users size={32} className="text-white/50" />
+            </div>
+          </div>
         </div>
-        <h3 className="text-lg font-medium text-white/70">
+        <h3 className="text-xl font-semibold tracking-tight text-white/85">
           Waiting for others to join
         </h3>
-        <p className="mt-1 text-sm text-white/35">
-          Share the code or link to invite people
+        <p className="mt-2 text-sm text-white/40 leading-relaxed">
+          Share the room link or copy the code from the top bar to invite people.
+          <br />
+          Up to 100 participants can join this room.
         </p>
+        <div className="mt-6 flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.18em] text-white/30">
+          <span className="h-px w-8 bg-white/15" />
+          <span>Encrypted · Open source</span>
+          <span className="h-px w-8 bg-white/15" />
+        </div>
       </div>
     </div>
   );
 }
 
 function TileView(props: any) {
+  // In focus mode, dim everyone except the spotlighted participant.
+  const dimmed = props.dimmed;
+  const spotlightSid = props.spotlightSid;
   return (
     <div
       className={"grid h-full w-full gap-2 sm:gap-3 " + getGridClass(props.all.length)}
     >
-      {props.all.map((p: any) => (
-        <ParticipantTile
-          key={p.sid || p.identity}
-          participant={p}
-          isLocal={p.isLocal || p.identity === props.userName}
-          isAdmin={props.isAdmin}
-          identity={props.identity}
-          roomId={props.roomId}
-          onSpotlight={props.onSpotlight}
-          background={props.background}
-          touchUp={props.touchUp && (p.isLocal || p.identity === props.userName)}
-          activeSid={props.activeSid}
-          spotlightSid={props.spotlightSid}
-        />
-      ))}
+      {props.all.map((p: any) => {
+        const tileDimmed = dimmed && (!spotlightSid || p.sid !== spotlightSid);
+        return (
+          <ParticipantTile
+            key={p.sid || p.identity}
+            participant={p}
+            isLocal={p.isLocal || p.identity === props.userName}
+            isAdmin={props.isAdmin}
+            identity={props.identity}
+            roomId={props.roomId}
+            onSpotlight={props.onSpotlight}
+            background={props.background}
+            touchUp={props.touchUp && (p.isLocal || p.identity === props.userName)}
+            activeSid={props.activeSid}
+            spotlightSid={props.spotlightSid}
+            customBgUrl={props.customBgUrl}
+            dimmed={tileDimmed}
+          />
+        );
+      })}
     </div>
   );
 }
 
 function StageView(props: any) {
+  const dimmed = props.dimmed;
+  const spotlightSid = props.spotlightSid;
+  const stageDimmed = dimmed && (!spotlightSid || props.stage.sid !== spotlightSid);
   return (
     <div className="flex h-full w-full flex-col gap-3">
       <div className="flex-1 min-h-0">
@@ -180,29 +215,36 @@ function StageView(props: any) {
           large
           activeSid={props.activeSid}
           spotlightSid={props.spotlightSid}
+          customBgUrl={props.customBgUrl}
+          dimmed={stageDimmed}
         />
       </div>
       {props.others.length > 0 && (
         <div className="flex h-24 sm:h-28 gap-2 overflow-x-auto pb-1 px-1 snap-x">
-          {props.others.map((p: any) => (
-            <div
-              key={p.sid || p.identity}
-              className="h-24 sm:h-28 w-32 sm:w-36 shrink-0 snap-start"
-            >
-              <ParticipantTile
-                participant={p}
-                isLocal={p.isLocal || p.identity === props.userName}
-                isAdmin={props.isAdmin}
-                identity={props.identity}
-                roomId={props.roomId}
-                onSpotlight={props.onSpotlight}
-                background={props.background}
-                touchUp={false}
-                activeSid={props.activeSid}
-                spotlightSid={props.spotlightSid}
-              />
-            </div>
-          ))}
+          {props.others.map((p: any) => {
+            const tileDimmed = dimmed && (!spotlightSid || p.sid !== spotlightSid);
+            return (
+              <div
+                key={p.sid || p.identity}
+                className="h-24 sm:h-28 w-32 sm:w-36 shrink-0 snap-start"
+              >
+                <ParticipantTile
+                  participant={p}
+                  isLocal={p.isLocal || p.identity === props.userName}
+                  isAdmin={props.isAdmin}
+                  identity={props.identity}
+                  roomId={props.roomId}
+                  onSpotlight={props.onSpotlight}
+                  background={props.background}
+                  touchUp={false}
+                  activeSid={props.activeSid}
+                  spotlightSid={props.spotlightSid}
+                  customBgUrl={props.customBgUrl}
+                  dimmed={tileDimmed}
+                />
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
@@ -220,30 +262,73 @@ function getGridClass(n: number): string {
 
 function BackgroundStyle({
   background,
+  customUrl,
   children,
 }: {
   background?: Background;
+  customUrl?: string | null;
   children: React.ReactNode;
 }) {
   if (!background || background === "none") return <>{children}</>;
   if (background === "blur") {
     return (
-      <div className="absolute inset-0 backdrop-blur-3xl bg-white/5">
+      <div className="absolute inset-0 bg-gradient-to-br from-[#1a1a2e] via-[#0f3460] to-[#16213e]">
         {children}
       </div>
     );
   }
-  const gradients: Record<string, string> = {
-    sunset: "linear-gradient(135deg, #f97316 0%, #ec4899 50%, #8b5cf6 100%)",
-    office: "linear-gradient(135deg, #475569 0%, #94a3b8 50%, #cbd5e1 100%)",
-    forest: "linear-gradient(135deg, #064e3b 0%, #10b981 60%, #84cc16 100%)",
-    beach: "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 40%, #fde68a 100%)",
+  if (background === "custom" && customUrl) {
+    return (
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: `url(${customUrl})` }}
+      >
+        {children}
+      </div>
+    );
+  }
+  if (background === "aurora") {
+    return (
+      <div className="absolute inset-0 bg-anim-aurora">
+        {children}
+      </div>
+    );
+  }
+  if (background === "ocean") {
+    return (
+      <div
+        className="absolute inset-0 bg-anim-ocean"
+        style={{
+          backgroundImage:
+            "linear-gradient(135deg, #0c4a6e 0%, #06b6d4 35%, #0ea5e9 65%, #fde68a 100%)",
+        }}
+      >
+        {children}
+      </div>
+    );
+  }
+  if (background === "orbit") {
+    return (
+      <div className="absolute inset-0 bg-anim-orbit">
+        {children}
+      </div>
+    );
+  }
+  const gradients: Record<string, { css: string; anim?: string }> = {
+    sunset: { css: "linear-gradient(135deg, #f97316 0%, #ec4899 50%, #8b5cf6 100%)", anim: "bg-anim-sunset" },
+    office: { css: "linear-gradient(135deg, #475569 0%, #94a3b8 50%, #cbd5e1 100%)" },
+    forest: { css: "linear-gradient(135deg, #064e3b 0%, #10b981 60%, #84cc16 100%)" },
+    beach: { css: "linear-gradient(135deg, #0ea5e9 0%, #06b6d4 40%, #fde68a 100%)", anim: "bg-anim-sunset" },
   };
+  const cfg = gradients[background] ?? gradients.sunset;
   return (
     <div
-      className="absolute inset-0"
-      style={{ background: gradients[background] ?? gradients.sunset }}
+      className={"absolute inset-0 " + (cfg.anim ?? "")}
+      style={cfg.anim ? undefined : { background: cfg.css }}
     >
+      {!cfg.anim && (
+        <div className="absolute inset-0" style={{ background: cfg.css }} />
+      )}
       {children}
     </div>
   );
@@ -261,6 +346,8 @@ const ParticipantTile = memo(function ParticipantTile({
   large,
   activeSid,
   spotlightSid,
+  customBgUrl,
+  dimmed,
 }: {
   participant: any;
   isLocal: boolean;
@@ -273,6 +360,8 @@ const ParticipantTile = memo(function ParticipantTile({
   large?: boolean;
   activeSid?: string | null;
   spotlightSid?: string | null;
+  customBgUrl?: string | null;
+  dimmed?: boolean;
 }) {
   const [hasVideo, setHasVideo] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
@@ -420,7 +509,8 @@ const ParticipantTile = memo(function ParticipantTile({
         ringState +
         " " +
         (large ? "" : "aspect-video") +
-        " bg-gradient-to-br from-[#15151e] via-[#0d0d14] to-[#08080d]"
+        " bg-gradient-to-br from-[#15151e] via-[#0d0d14] to-[#08080d]" +
+        (dimmed ? " focus-dim" : "")
       }
     >
       {/* Subtle per-tile accent glow */}
@@ -432,7 +522,7 @@ const ParticipantTile = memo(function ParticipantTile({
         }}
       />
 
-      <BackgroundStyle background={isLocal ? background : undefined}>
+      <BackgroundStyle background={isLocal ? background : undefined} customUrl={customBgUrl}>
         <video
           ref={videoRef}
           autoPlay
@@ -442,10 +532,22 @@ const ParticipantTile = memo(function ParticipantTile({
           data-lk-local={isLocal ? "true" : undefined}
           data-lk-participant={participant?.identity}
           className={
-            "absolute inset-0 h-full w-full object-cover transition-opacity duration-300 " +
-            (hasVideo ? "opacity-100" : "opacity-0") +
+            "absolute inset-0 h-full w-full object-cover transition-all duration-300 " +
+            (hasVideo && background !== "blur" && !(background && background !== "none")
+              ? "opacity-100"
+              : hasVideo && background === "blur"
+                ? "opacity-100 blur-md scale-110"
+                : "opacity-0") +
             (touchUp ? " contrast-[1.05] saturate-[1.15] brightness-[1.04]" : "")
           }
+          style={{
+            filter: background === "blur"
+              ? "blur(12px) brightness(0.85)"
+              : background && background !== "none"
+                ? "blur(14px) brightness(0.7) saturate(0.6)"
+                : undefined,
+            transform: background && background !== "none" ? "scale(1.1)" : undefined,
+          }}
         />
         {!hasVideo && (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -458,14 +560,20 @@ const ParticipantTile = memo(function ParticipantTile({
                 }}
               />
               <div
-                className="relative grid place-items-center rounded-full text-2xl sm:text-3xl font-bold text-white shadow-2xl ring-4 ring-white/10"
+                className="relative grid place-items-center rounded-full text-2xl sm:text-3xl font-bold text-white shadow-2xl ring-4 ring-white/10 overflow-hidden"
                 style={{
                   width: large ? 112 : 80,
                   height: large ? 112 : 80,
                   background: `linear-gradient(135deg, ${accent})`,
                 }}
               >
-                {initials}
+                <span className="relative z-10">{initials}</span>
+                <span
+                  className="absolute inset-0 opacity-50"
+                  style={{
+                    background: "radial-gradient(circle at 30% 25%, rgba(255,255,255,0.35), transparent 55%)",
+                  }}
+                />
               </div>
             </div>
           </div>
@@ -474,15 +582,15 @@ const ParticipantTile = memo(function ParticipantTile({
 
       {/* Active speaker audio waves overlay */}
       {isSpeaking && (
-        <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 rounded-full bg-emerald-500/20 px-2 py-1 backdrop-blur-sm ring-1 ring-emerald-400/30">
+        <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 rounded-full bg-emerald-500/25 px-2.5 py-1 backdrop-blur-md ring-1 ring-emerald-400/40 shadow-[0_2px_8px_rgba(16,185,129,0.25)]">
           <AudioWave bars={4} className="h-3 text-emerald-300" />
-          <span className="text-[9px] font-semibold uppercase tracking-wider text-emerald-200">Speaking</span>
+          <span className="text-[9px] font-semibold uppercase tracking-wider text-emerald-100">Speaking</span>
         </div>
       )}
 
       {/* Spotlight badge */}
       {isSpotlighted && !isSpeaking && (
-        <div className="absolute top-3 left-3 z-10 flex items-center gap-1 rounded-full bg-amber-400/20 px-2 py-1 backdrop-blur-sm ring-1 ring-amber-300/30">
+        <div className="absolute top-3 left-3 z-10 flex items-center gap-1 rounded-full bg-amber-400/25 px-2.5 py-1 backdrop-blur-md ring-1 ring-amber-300/40 shadow-[0_2px_8px_rgba(252,211,77,0.25)]">
           <Icon.Star size={9} className="text-amber-200" />
           <span className="text-[9px] font-semibold uppercase tracking-wider text-amber-100">Spotlight</span>
         </div>
@@ -490,32 +598,32 @@ const ParticipantTile = memo(function ParticipantTile({
 
       {/* Hover quick-actions — admin only, for other participants */}
       {isAdmin && isOtherParticipant && hovered && (
-        <div className="absolute top-3 right-3 z-20 flex gap-0.5 rounded-xl border border-white/10 bg-black/75 p-1 backdrop-blur-xl animate-fadeIn shadow-2xl">
+        <div className="absolute top-3 right-3 z-20 flex gap-0.5 rounded-xl border border-white/10 bg-black/70 p-1 backdrop-blur-2xl animate-fadeIn shadow-[0_8px_24px_rgba(0,0,0,0.4)]">
           <button
             onClick={() => act("mute")}
             title="Mute"
-            className="grid h-7 w-7 place-items-center rounded-md text-white/60 hover:bg-white/10 hover:text-white transition-colors"
+            className="grid h-7 w-7 place-items-center rounded-md text-white/65 hover:bg-white/10 hover:text-white transition-all hover:scale-110"
           >
             <Icon.MicOff size={13} />
           </button>
           <button
             onClick={() => act("promote")}
             title="Make co-host"
-            className="grid h-7 w-7 place-items-center rounded-md text-white/60 hover:bg-purple-500/25 hover:text-purple-200 transition-colors"
+            className="grid h-7 w-7 place-items-center rounded-md text-white/65 hover:bg-purple-500/25 hover:text-purple-200 transition-all hover:scale-110"
           >
             <Icon.ShieldCheck size={13} />
           </button>
           <button
             onClick={() => onSpotlight?.((participant as any).sid)}
             title="Spotlight"
-            className="grid h-7 w-7 place-items-center rounded-md text-white/60 hover:bg-amber-500/25 hover:text-amber-200 transition-colors"
+            className="grid h-7 w-7 place-items-center rounded-md text-white/65 hover:bg-amber-500/25 hover:text-amber-200 transition-all hover:scale-110"
           >
             <Icon.Star size={13} />
           </button>
           <button
             onClick={() => act("kick")}
             title="Remove"
-            className="grid h-7 w-7 place-items-center rounded-md text-red-300/80 hover:bg-red-500/25 hover:text-red-300 transition-colors"
+            className="grid h-7 w-7 place-items-center rounded-md text-red-300/85 hover:bg-red-500/25 hover:text-red-300 transition-all hover:scale-110"
           >
             <Icon.Trash size={13} />
           </button>
@@ -523,7 +631,7 @@ const ParticipantTile = memo(function ParticipantTile({
       )}
 
       {/* Bottom name bar — glassmorphism */}
-      <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/85 via-black/40 to-transparent px-3 py-2.5 pt-6">
+      <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between gap-2 bg-gradient-to-t from-black/90 via-black/45 to-transparent px-3 py-2.5 pt-6">
         <div className="flex items-center gap-2 min-w-0">
           <span className="relative inline-flex h-2 w-2 shrink-0">
             {isSpeaking && (
@@ -535,25 +643,25 @@ const ParticipantTile = memo(function ParticipantTile({
                 (isSpeaking
                   ? "bg-emerald-400 shadow-[0_0_8px_rgba(74,222,128,0.7)]"
                   : isMuted
-                    ? "bg-red-400"
+                    ? "bg-red-400 shadow-[0_0_6px_rgba(248,113,113,0.5)]"
                     : "bg-white/40")
               }
             />
           </span>
-          <span className="truncate text-[12px] font-semibold text-white/95 drop-shadow">
-            {name}{isLocal && <span className="ml-1.5 text-[10px] font-medium text-white/60">· you</span>}
+          <span className="truncate text-[12px] font-semibold text-white/95 drop-shadow tracking-tight">
+            {name}{isLocal && <span className="ml-1.5 text-[10px] font-medium text-white/55">· you</span>}
           </span>
         </div>
         <div className="flex items-center gap-1.5 shrink-0">
           {isMuted && (
-            <span className="grid h-5 w-5 place-items-center rounded-full bg-red-500/85 backdrop-blur-sm shadow-sm">
+            <span className="grid h-5 w-5 place-items-center rounded-full bg-red-500/90 backdrop-blur-sm shadow-[0_2px_8px_rgba(239,68,68,0.4)] ring-1 ring-red-400/40">
               <Icon.MicOff size={10} className="text-white" />
             </span>
           )}
           {touchUp && (
             <span
-              className="grid h-5 w-5 place-items-center rounded-full backdrop-blur-sm shadow-sm"
-              style={{ background: "color-mix(in srgb, var(--accent) 60%, transparent)" }}
+              className="grid h-5 w-5 place-items-center rounded-full backdrop-blur-sm shadow-sm ring-1 ring-white/20"
+              style={{ background: "color-mix(in srgb, var(--accent) 65%, transparent)" }}
               title="Touch-up on"
             >
               <Icon.Sparkles size={10} className="text-white" />
@@ -574,6 +682,8 @@ const ParticipantTile = memo(function ParticipantTile({
     prev.roomId === next.roomId &&
     prev.large === next.large &&
     prev.background === next.background &&
-    prev.touchUp === next.touchUp
+    prev.touchUp === next.touchUp &&
+    prev.customBgUrl === next.customBgUrl &&
+    prev.dimmed === next.dimmed
   );
 });

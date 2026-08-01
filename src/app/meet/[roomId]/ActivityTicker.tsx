@@ -130,23 +130,23 @@ export function ActivityTicker({ roomId, identity }: { roomId: string; identity:
   if (events.length === 0) return null;
 
   return (
-    <div className="pointer-events-none absolute right-3 top-1/2 z-30 -translate-y-1/2 flex flex-col gap-2 max-w-xs">
+    <div className="pointer-events-none absolute right-3 top-24 z-25 flex flex-col gap-2 max-w-xs">
       {events.slice(0, 4).map((e) => (
         <div
           key={e.id}
-          className="ticker-in pointer-events-auto flex items-center gap-2.5 rounded-full border border-white/10 bg-black/55 px-3 py-1.5 text-xs text-white shadow-lg backdrop-blur-xl"
-          style={{ boxShadow: `0 4px 20px ${e.color}33` }}
+          className="ticker-in pointer-events-auto flex items-center gap-2.5 rounded-2xl border border-white/[0.08] bg-black/55 px-3 py-2 text-xs text-white shadow-[0_8px_24px_rgba(0,0,0,0.4)] backdrop-blur-2xl"
+          style={{ boxShadow: `0 8px 24px rgba(0,0,0,0.4), 0 0 0 1px ${e.color}1a` }}
         >
           <span
-            className="grid h-6 w-6 place-items-center rounded-full"
-            style={{ background: `${e.color}22`, color: e.color }}
+            className="grid h-7 w-7 place-items-center rounded-full shrink-0 ring-1"
+            style={{ background: `${e.color}22`, color: e.color, boxShadow: `inset 0 0 0 1px ${e.color}40` }}
           >
             {e.icon}
           </span>
           <div className="min-w-0">
-            <div className="font-medium text-white/90 truncate max-w-[180px]">{e.text}</div>
+            <div className="font-semibold text-white/95 truncate max-w-[180px] tracking-tight">{e.text}</div>
             {e.subtext && (
-              <div className="text-[10px] text-white/50 truncate max-w-[180px]">{e.subtext}</div>
+              <div className="text-[10px] text-white/55 truncate max-w-[180px]">{e.subtext}</div>
             )}
           </div>
         </div>
