@@ -725,9 +725,127 @@ kbd {
 
 /* === Activity ticker slide === */
 @keyframes ticker-in {
-  0%   { opacity: 0; transform: translateX(-12px); }
-  100% { opacity: 1; transform: translateX(0); }
+  0%   { opacity: 0; transform: translateX(20px) scale(0.96); }
+  100% { opacity: 1; transform: translateX(0) scale(1); }
 }
 .ticker-in {
-  animation: ticker-in 320ms ease-out;
+  animation: ticker-in 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* === Animated virtual backgrounds === */
+@keyframes bg-shift-sunset {
+  0%, 100% { background-position: 0% 50%; }
+  50%      { background-position: 100% 50%; }
+}
+@keyframes bg-shift-aurora {
+  0%, 100% { background-position: 0% 50%, 100% 50%; transform: scale(1); }
+  50%      { background-position: 100% 50%, 0% 50%; transform: scale(1.05); }
+}
+@keyframes bg-shift-ocean {
+  0%, 100% { background-position: 0% 100%; }
+  50%      { background-position: 100% 0%; }
+}
+@keyframes bg-orbit {
+  0%   { transform: rotate(0deg) scale(1); }
+  50%  { transform: rotate(180deg) scale(1.15); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+@keyframes bg-pulse {
+  0%, 100% { opacity: 0.7; }
+  50%      { opacity: 1; }
+}
+.bg-anim-sunset {
+  background-size: 200% 200%;
+  animation: bg-shift-sunset 12s ease-in-out infinite;
+}
+.bg-anim-aurora {
+  background:
+    radial-gradient(circle at 20% 30%, #6366f1 0%, transparent 40%),
+    radial-gradient(circle at 80% 70%, #ec4899 0%, transparent 40%),
+    linear-gradient(135deg, #0f172a, #1e293b);
+  background-size: 200% 200%, 200% 200%, 100% 100%;
+  animation: bg-shift-aurora 14s ease-in-out infinite;
+}
+.bg-anim-ocean {
+  background-size: 200% 200%;
+  animation: bg-shift-ocean 16s ease-in-out infinite;
+}
+.bg-anim-orbit {
+  background: conic-gradient(from 0deg, #6366f1, #ec4899, #f59e0b, #10b981, #6366f1);
+  animation: bg-orbit 20s linear infinite;
+}
+.bg-anim-pulse {
+  animation: bg-pulse 3s ease-in-out infinite;
+}
+
+/* === Focus mode dim === */
+.focus-dim {
+  opacity: 0.4;
+  filter: grayscale(0.5) brightness(0.7);
+  transition: opacity 360ms cubic-bezier(0.16, 1, 0.3, 1), filter 360ms;
+}
+.focus-dim:hover {
+  opacity: 0.85;
+  filter: grayscale(0.2) brightness(0.85);
+}
+
+/* === Welcome wave animation === */
+@keyframes wave-hand {
+  0%, 100% { transform: rotate(0deg); }
+  20%      { transform: rotate(20deg); }
+  40%      { transform: rotate(-15deg); }
+  60%      { transform: rotate(15deg); }
+  80%      { transform: rotate(-10deg); }
+}
+.wave-hand {
+  display: inline-block;
+  animation: wave-hand 1.2s ease-in-out 3;
+  transform-origin: 70% 70%;
+}
+@keyframes join-celebrate {
+  0%   { transform: translateY(0) scale(0.5); opacity: 0; }
+  50%  { transform: translateY(-30px) scale(1.15); opacity: 1; }
+  100% { transform: translateY(-60px) scale(1); opacity: 0; }
+}
+.join-celebrate {
+  animation: join-celebrate 2s ease-out forwards;
+}
+
+/* === Pomodoro progress ring === */
+@keyframes pomodoro-progress {
+  0%   { stroke-dashoffset: var(--ring-circ); }
+  100% { stroke-dashoffset: var(--ring-offset); }
+}
+.pomodoro-ring {
+  animation: pomodoro-progress var(--duration, 1500s) linear forwards;
+  transform: rotate(-90deg);
+  transform-origin: center;
+}
+
+/* === Continuous emoji bubble stream === */
+@keyframes bubble-rise {
+  0%   { transform: translate(0, 0) scale(0.6) rotate(0deg); opacity: 0; }
+  10%  { opacity: 1; transform: translate(0, -20px) scale(1); }
+  100% { transform: translate(var(--drift, 30px), -360px) scale(0.9) rotate(var(--rotate, 15deg)); opacity: 0; }
+}
+.bubble-rise {
+  animation: bubble-rise var(--rise-duration, 3.5s) ease-out forwards;
+}
+
+/* === Pomodoro timer pulse === */
+@keyframes pomodoro-pulse {
+  0%, 100% { transform: scale(1); }
+  50%      { transform: scale(1.05); }
+}
+.pomodoro-pulse {
+  animation: pomodoro-pulse 1s ease-in-out infinite;
+}
+
+/* === Talk time bar === */
+@keyframes tt-fill {
+  from { width: 0%; }
+  to   { width: var(--target-width); }
+}
+.tt-fill {
+  animation: tt-fill 800ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
